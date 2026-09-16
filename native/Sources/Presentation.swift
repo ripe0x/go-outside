@@ -66,7 +66,6 @@ struct OutsideModel {
     var computerClock: String { OutsideFormat.clock(computer) }
     var daylightClock: String { solar.map { OutsideFormat.clock($0.remainingSeconds, remaining: true) } ?? "—" }
     var ratio: RatioState { RatioState.make(computer: computer, daylight: solar?.remainingSeconds) }
-    var menuText: String { "\(computerText) / \(daylightText)" }
     var accessibility: String {
         let computer = OutsideFormat.accessibleDuration(self.computer)
         let daylight = solar.map { OutsideFormat.accessibleDuration($0.remainingSeconds, remaining: true) + " of daylight remaining." }

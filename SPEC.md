@@ -48,10 +48,10 @@ The brand is **go/outside**, in lowercase. Use a new ratio-circle icon drawn wit
 ### Menu bar
 
 ```text
-◕ 4h12 / 2h08
+◕
 ```
 
-Left always means computer time; right always means daylight left. The tooltip spells out both meanings. Selected icon: a ratio circle, with a solid sector for active computer time today and a hollow sector for daylight remaining today. The text symbol above is schematic; draw the actual sector accurately with native paths.
+Show only the ratio circle in a square menu-bar item, with no clock text. The tooltip spells out both durations. Selected icon: a ratio circle, with a solid sector for active computer time today and a hollow sector for daylight remaining today. The text symbol above is schematic; draw the actual sector accurately with native paths.
 
 Let `S` be computer seconds and `D` be daylight seconds. The solid share is `S / (S + D)` and the hollow share is `D / (S + D)`. Start the solid sector at 12 o'clock and expand clockwise. For 4 hours of computer use and 2 hours of daylight left, the circle is two-thirds filled. This is a comparison of the two quantities, not a partition of the day's hours or a measure of time outdoors. It communicates their balance; the durations communicate their absolute size.
 
@@ -149,8 +149,8 @@ Recalculate solar intervals on launch, location change, calendar-date/timezone c
 - Computer time rounds down to completed seconds. Daylight rounds up to the next second while positive, so it never displays zero before daylight actually ends.
 - Examples: `0s`, `8m 23s`, `1h 3m 7s`, `4h 12m 59s`.
 - A missing location uses `—`; zero available daylight uses `0s`.
-- The compact menu title retains minute precision (`8m`, `1h03`), rounding computer time down and positive daylight up.
-- Refresh the menu title only when its displayed minute or state changes. Update the open popover as needed; avoid redrawing closed UI every second.
+- The menu bar shows only the ratio circle; its tooltip retains compact minute precision (`8m`, `1h03`), rounding computer time down and positive daylight up.
+- Update the ratio icon once per minute or on state changes. Update the open popover as needed; avoid redrawing closed UI every second.
 - VoiceOver reads a full sentence: `Four hours twelve minutes five seconds on your computer today. Two hours eight minutes seven seconds of daylight remaining.` All controls support keyboard navigation; Escape closes the popover.
 
 ## Fork implementation
@@ -219,7 +219,7 @@ The repository explicitly licenses application source under GPL-3.0 and excludes
 - Solar fixtures for equatorial and mid-latitude locations agree with an independent reference within 2 minutes. Include dates around DST and polar fixtures with no crossings; avoid live network tests.
 - A selected location in a different timezone still produces the correct daylight intervals within the Mac's current calendar day. Polar day shows the actual duration until midnight; polar night shows zero.
 - Granted location access produces daylight without a city-search step. Denied location access and failed city lookup keep tracking usable and daylight unknown when no saved coordinates exist. With a saved fix or city, offline launch shows daylight; failed automatic refresh exposes the last-known-location state. Verify one-shot refresh timing and that manual-city mode never starts location updates.
-- Unknown and zero daylight are visually distinct. Positive daylight never rounds to zero early. Long durations fit in the menu bar and popover in both appearances.
+- Unknown and zero daylight are visually distinct. Positive daylight never rounds to zero early. Long durations fit in the popover in both appearances; the menu-bar item remains icon-only.
 - The ratio circle is two-thirds solid for `S = 4h, D = 2h`, hollow for `S = 0, D > 0`, and solid for `S > 0, D = 0`. Both-zero and missing-location states avoid division by zero and remain distinguishable. Check actual 20-point rendering, light/dark appearance, and the accessible duration labels.
 - Dawn, noon, sunset, and night previews show changing colored light, brightness, and organic shape in the dedicated banner, with no content overlapping it in either appearance. The same date and time yield the same background, adjacent dates vary subtly, and polar/unknown states remain finite and readable. All controls fit below the gradient; Settings and Quit work through the native context menu. Reduce Transparency retains an opaque, readable surface.
 - Settings, city selection, and quitting work with keyboard and VoiceOver. Login launch starts in the background after setup on both macOS 12 and a current macOS version.

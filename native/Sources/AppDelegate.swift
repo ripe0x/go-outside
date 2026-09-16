@@ -27,7 +27,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastIconMinute: Int?
     private var lastLocationSignature: String?
     private var settingsError = ""
-    private var lastMenuText = ""
     private var isLoginItemLaunch = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -72,12 +71,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func configureStatusItem() {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         guard let button = statusItem.button else { return }
         button.target = self
         button.action = #selector(togglePopover)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        button.imagePosition = .imageLeft
+        button.title = ""
+        button.imagePosition = .imageOnly
         button.setAccessibilityRole(.button)
         button.setAccessibilityHelp("Click to compare today's time. Right-click for Settings and Quit.")
         statusMenu = makeStatusMenu()
@@ -352,10 +352,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateStatus(with model: OutsideModel, minute: Int, forceIcon: Bool) {
         guard let button = statusItem.button else { return }
-        if model.menuText != lastMenuText {
-            button.title = model.menuText
-            lastMenuText = model.menuText
-        }
         let iconState = model.ratio
         if iconState != lastIconState && (forceIcon || lastIconMinute != minute || ratioKindChanged(from: lastIconState, to: iconState)) {
             button.image = RatioIcon.image(for: iconState)
