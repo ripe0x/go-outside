@@ -161,8 +161,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         tracker.sample(ActivitySample(
             now: now,
             uptime: uptime,
+            // Background tasks and software-posted UI events are not physical
+            // computer use. The HID table tracks hardware input independently.
             idleSeconds: CGEventSource.secondsSinceLastEventType(
-                .combinedSessionState,
+                .hidSystemState,
                 eventType: CGEventType(rawValue: UInt32.max)!
             ),
             systemSleeping: systemSleeping,

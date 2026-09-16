@@ -31,6 +31,21 @@ func runAccountingTests() {
     tracker.sample(reading(start.addingTimeInterval(125), 125, idle: 0), calendar: utc)
     precondition(abs(tracker.computerSeconds - 123) < 0.001)
 
+    // Keep the Mac awake and session active for an hour of unattended work.
+    // Only the initial reading grace can count; output/CPU work is not input.
+    var unattended = ActivityTracker(seconds: 120, date: start, calendar: utc)
+    unattended.sample(reading(start, 0), calendar: utc)
+    for second in 1...3_600 {
+        let elapsed = Double(second)
+        unattended.sample(reading(start.addingTimeInterval(elapsed), elapsed, idle: elapsed), calendar: utc)
+    }
+    precondition(unattended.computerSeconds == 180 && unattended.isAway,
+                 "An awake Mac must stop counting after 60 seconds without hardware input")
+    unattended.sample(reading(start.addingTimeInterval(3_601), 3_601), calendar: utc)
+    precondition(unattended.computerSeconds == 180, "Returning must not charge the unattended interval")
+    unattended.sample(reading(start.addingTimeInterval(3_602), 3_602), calendar: utc)
+    precondition(unattended.computerSeconds == 181 && !unattended.isAway)
+
     var overlapping = ActivityTracker(date: start, calendar: utc)
     overlapping.sample(reading(start, 0), calendar: utc)
     overlapping.sample(reading(start.addingTimeInterval(1), 1, sleep: true), calendar: utc)
@@ -88,4 +103,5 @@ func runAccountingTests() {
     precondition(store.load(now: start, calendar: utc) == 0)
     store.save(seconds: 99_999_999.0, now: start, calendar: utc)
     precondition(store.load(now: start, calendar: utc) == 86_400)
+    print("PASS: active/away accounting, unattended hour, return, lifecycle, clock and persistence")
 }

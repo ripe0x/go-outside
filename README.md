@@ -4,9 +4,11 @@ go/outside is a small macOS menu-bar app that compares active computer time toda
 
 The app uses Apple's Core Location and geocoding services for the one-shot current-location fix and city lookup. A saved coarse coordinate is enough for offline sunrise and sunset calculations; reverse geocoding only supplies a friendlier label and may use Apple services.
 
-Computer time counts only while go/outside is running. It stops after 60 seconds without input, during sleep or display-off, and while the session is inactive. It does not import historical Screen Time. The circle compares the two durations: solid is computer time divided by computer time plus daylight remaining; hollow is daylight remaining. The numbers beside it show the exact hours and minutes.
+Computer time counts only while go/outside is running. It uses the hardware-input idle timer and stops after 60 seconds without keyboard or mouse input, during sleep or display-off, and while the session is inactive. It does not import historical Screen Time. The circle compares the two durations: solid is computer time divided by computer time plus daylight remaining; hollow is daylight remaining. The numbers beside it show the exact hours and minutes.
 
-The top third of the popover contains only a monochrome radial gradient. Its brightness and shape follow the day's light, with subtle variation by date. The comparison below uses evenly spaced black-and-white text over a restrained native glass blur. Both appearances and Reduce Transparency are supported; the gradient is drawn locally without images or an extra service.
+The top third of the popover contains only colorful abstract light artwork: flowing color bands, organic blends, and subtle texture. Its brightness, palette, and shape follow the day's light, with subtle variation by date. The comparison below uses evenly spaced black-and-white text over a restrained native glass blur. Both appearances and Reduce Transparency are supported; the gradient is drawn locally without images or an extra service.
+
+Unattended Codex/Claude tasks, CPU work, and terminal output do not count as input. Ordinary software-posted UI events are excluded by the hardware timer. Virtual input devices can still imitate physical input; lock the Mac to stop counting reliably when stepping away. Local tasks can keep running while the Mac remains awake. The initial 60-second idle grace can still count passive reading or the first minute after leaving.
 
 Automatic location uses a one-shot refresh on launch and after wake on a new calendar day or when the last fix is at least six hours old. A failed refresh keeps the saved coordinates and shows a last-known-location state. A manually chosen city stays selected until changed.
 

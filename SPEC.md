@@ -37,9 +37,9 @@ Keep v1 to one comparison, one location setup, and a small settings sheet.
 
 ## Main interface
 
-Keep Ratio's sparse comparison and compact popover. Use black, white, and neutral greys only, following system light/dark appearance. Use clear system labels, tabular duration numerals, consistent 24-point margins, and equal comparison columns.
+Keep Ratio's sparse comparison and compact popover. Use black, white, and neutral greys for UI elements only, following system light/dark appearance. Keep color in the artwork above them. Use clear system labels, tabular duration numerals, consistent 24-point margins, and equal comparison columns.
 
-The top third of each popover contains only an original monochrome radial light field, with no title, labels, buttons, or glass card over it. Its brightness and shape evolve through dawn, noon, sunset, and night using the calculated solar phase. Add a subtle deterministic daily variation in the shape. Without location, use a cosmetic wall-clock progression while daylight stays unknown.
+The top third of each popover contains only original colorful abstract light artwork, with no title, labels, buttons, or glass card over it. Use flowing color bands, asymmetric organic blends, luminous folds, and restrained fine texture. Create original artwork locally. Brightness, palette, and shape evolve through dawn, noon, sunset, and night using the calculated solar phase; avoid a single radial ellipse. Add a subtle deterministic daily variation in the shape. Without location, use a cosmetic wall-clock progression while daylight stays unknown.
 
 Place all information and essential setup controls in the lower two-thirds. Native AppKit visual-effect material supplies a very subtle blur behind this region only; a near-opaque neutral tint keeps text contrast stable against the desktop. Use opaque grayscale text with strong contrast in both appearances. Reduce Transparency makes the information region opaque while preserving the decorative gradient. Update through the existing open-popover refresh, with no continuous animation loop or redraw of closed UI.
 
@@ -110,8 +110,9 @@ Remove Pause and Reset from the main interface. Automatic away detection handles
 
 Maintain one `computerSeconds` total for the current Mac calendar date.
 
-- Sample activity every second using the existing CoreGraphics idle-age query. Do not record key contents, mouse positions, app names, window titles, or websites.
+- Sample hardware activity every second using the public CoreGraphics idle-age query with `.hidSystemState`, rather than the combined session table. Do not record key contents, mouse positions, app names, window titles, or websites.
 - Stop counting after **60 seconds without input**. The initial idle grace period can count up to 60 seconds of passive reading or inactivity. Video playback without input stops counting after that cutoff too; this is an active-use estimate.
+- Background CPU/network tasks and terminal output do not reset hardware idle. Ordinary software-posted UI events are excluded; virtual HID devices can still imitate physical input. Locking the Mac is the reliable way to stop counting during unattended work, which can continue while the Mac stays awake.
 - Stop on system sleep, display sleep, or session resignation. Track these as separate flags so waking a display cannot incorrectly resume an inactive session.
 - Resume only when the session and display are active and the idle age is below 60 seconds. Do not charge the interval spanning an away-to-active transition.
 - Use a monotonic clock for elapsed accounting, independent of clock adjustments. Retain upstream's conservative guard: accept only tick intervals greater than zero and at most **3 seconds**. Longer suspension gaps are not backfilled.
@@ -211,7 +212,7 @@ The repository explicitly licenses application source under GPL-3.0 and excludes
 ## Acceptance checks
 
 - Two minutes of eligible simulated use adds 120 seconds, regardless of app or site. Test with injected clocks/activity rather than waiting in real time.
-- No input for 60 seconds stops additional accumulation. Input resumes counting without charging the preceding away interval.
+- One hour of an awake, active session without hardware input adds only the initial 60-second grace, then remains away. No input for 60 seconds stops additional accumulation. Input resumes counting without charging the preceding away interval.
 - Sleep, display-off, and inactive-session combinations never count, even if wake notifications arrive in a different order. A gap over 3 seconds and a wall-clock jump never inflate totals.
 - A same-day restart restores persisted time; time while closed is excluded. Midnight clears yesterday and preserves the accepted interval after midnight. Test 23-hour and 25-hour calendar days.
 - With synthetic sunrise at 7:00 AM and sunset at 7:00 PM: 6:00 AM shows 12h daylight, noon shows 7h, and 8:00 PM shows 0m.
@@ -220,7 +221,7 @@ The repository explicitly licenses application source under GPL-3.0 and excludes
 - Granted location access produces daylight without a city-search step. Denied location access and failed city lookup keep tracking usable and daylight unknown when no saved coordinates exist. With a saved fix or city, offline launch shows daylight; failed automatic refresh exposes the last-known-location state. Verify one-shot refresh timing and that manual-city mode never starts location updates.
 - Unknown and zero daylight are visually distinct. Positive daylight never rounds to zero early. Long durations fit in the menu bar and popover in both appearances.
 - The ratio circle is two-thirds solid for `S = 4h, D = 2h`, hollow for `S = 0, D > 0`, and solid for `S > 0, D = 0`. Both-zero and missing-location states avoid division by zero and remain distinguishable. Check actual 20-point rendering, light/dark appearance, and the accessible duration labels.
-- Dawn, noon, sunset, and night previews show changing monochrome brightness and shape in the top third, with no content overlapping it in either appearance. The same date and time yield the same background, adjacent dates vary subtly, and polar/unknown states remain finite and readable. All controls fit below the gradient; Settings and Quit work through the native context menu. Reduce Transparency retains an opaque, readable surface.
+- Dawn, noon, sunset, and night previews show changing colored light, brightness, and organic shape in the top third, with no content overlapping it in either appearance. The same date and time yield the same background, adjacent dates vary subtly, and polar/unknown states remain finite and readable. All controls fit below the gradient; Settings and Quit work through the native context menu. Reduce Transparency retains an opaque, readable surface.
 - Settings, city selection, and quitting work with keyboard and VoiceOver. Login launch starts in the background after setup on both macOS 12 and a current macOS version.
 - Built binary includes Intel and Apple silicon slices with the advertised macOS 12 deployment target. Fork resources/configuration contain no upstream updater endpoint, purchaser flow, telemetry, Apple Events capability, or original branding.
 
