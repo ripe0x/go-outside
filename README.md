@@ -1,50 +1,41 @@
-# Ratio
+# go/outside
 
-Create more. Consume less.
+go/outside is a small macOS menu-bar app that compares active computer time today with estimated daylight remaining today. It stores the current day's computer-time total locally and does not use accounts, analytics, a backend, notifications, or an updater.
 
-Ratio is a macOS menu-bar app that measures time in the active app or browser site, then lets you classify that time as creating or consuming. It shows the balance in the menu bar and keeps a local daily history.
+The app uses Apple's Core Location and geocoding services for the one-shot current-location fix and city lookup. A saved coarse coordinate is enough for offline sunrise and sunset calculations; reverse geocoding only supplies a friendlier label and may use Apple services.
 
-## Get Ratio
+Computer time counts only while go/outside is running. It stops after 60 seconds without input, during sleep or display-off, and while the session is inactive. It does not import historical Screen Time. The circle compares the two durations: solid is computer time divided by computer time plus daylight remaining; hollow is daylight remaining. The numbers beside it show the exact hours and minutes.
 
-- **Signed app:** Buy the notarized, automatically updating build for $20 at [ratio.visualizevalue.com](https://ratio.visualizevalue.com/).
-- **Build it yourself:** Clone this repository and follow the instructions below.
-
-The paid build funds development and removes the work of compiling, signing, notarizing, and updating the app. The application source is available under GPL-3.0.
-
-## What it records
-
-- Ratio counts time only for the foreground window.
-- For supported browsers, it can read the active tab and retains only the hostname.
-- App usage, classifications, daily history, and preferences stay in macOS UserDefaults on your Mac.
-- Update authentication is stored in Keychain.
-- The signed build can share one anonymous cumulative tracked-time total. It never sends app names, site names, window titles, classifications, or daily history. This is enabled by default and can be disabled from **Share Anonymous Total** in the right-click menu. Self-built copies do not report unless they have a valid purchaser update credential.
-
-See [`native/Sources/main.swift`](native/Sources/main.swift) for the complete implementation.
+Automatic location uses a one-shot refresh on launch and after wake on a new calendar day or when the last fix is at least six hours old. A failed refresh keeps the saved coordinates and shows a last-known-location state. A manually chosen city stays selected until changed.
 
 ## Requirements
 
 - macOS 12 or newer
-- Intel or Apple silicon
-- Xcode command-line tools
+- Xcode command-line tools, including `swiftc`, `lipo`, `vtool`, `codesign`, and `iconutil`
+- An Intel or Apple-silicon Mac, or a macOS SDK that can cross-compile both slices
 
-## Build the Mac app
+## Build locally
 
 ```sh
-git clone https://github.com/visualizevalue/ratio.git
-cd ratio/native
-./setup-sparkle.sh
+cd native
 ./build.sh
-open Ratio.app
+open GoOutside.app
 ```
 
-`build.sh` creates a universal Intel/Apple-silicon app, applies an ad-hoc local signature, and runs the accounting self-tests. An ad-hoc build may require right-clicking the app and choosing **Open**. It does not carry Visualize Value's Developer ID signature or Apple notarization.
+The script builds `GoOutside.app` as an arm64/x86_64 universal binary with a macOS 12 deployment target, embeds the macOS 12 login helper, verifies both executable slices, applies an ad-hoc local signature, and runs the deterministic self-tests. Build output is ignored by Git.
 
-Automatic updates for the distributed build use Sparkle. Update downloads require a verified Ratio purchase; this does not prevent local builds or modify local tracking data.
+An ad-hoc build is intended for local use. macOS may require Control-clicking `GoOutside.app` and choosing **Open**, and Location Services must be allowed in System Settings when using the current-location option. A production build needs its own Developer ID identity, hardened-runtime settings, entitlements review, notarization, and distribution signing. Those steps are separate from this local build and there is no Sparkle or other update service.
 
-## Contributing
+The bundle identifier `com.gooutside.desktop` and login-helper identifier `com.gooutside.desktop.login-helper` are development identities for this local fork. Replace them consistently before public distribution and keep the production identity stable afterward.
 
-Issues and focused pull requests are welcome. Please keep the interface compact, preserve local-first tracking, and do not add collection of app names, sites, window titles, or browsing history.
+## Install and launch at login
 
-## License
+For a local install, move or copy `GoOutside.app` to `/Applications` and launch it. The app has no Dock icon; use its menu-bar item to open the popover or quit.
 
-Ratio's application source is licensed under [GNU GPL v3](LICENSE). The Ratio name, icon, and Visualize Value name are trademarks or brand assets and are not granted for use by the GPL software license. Third-party components retain their own licenses.
+Launch at login is off by default. When enabled, macOS registers the bundled helper at `Contents/Library/LoginItems`; the helper starts the parent with `--login-item` in the background and does not activate the popover. On macOS 13 and newer, System Settings may require approval under **General → Login Items**. macOS 12 has no status-query API for the legacy registration call, so the app reports the last successful request on that OS. A signed, stable bundle identity is required for reliable production login-item registration.
+
+## Source and license
+
+This project is a local GPL-3.0 derivative of [visualizevalue/ratio](https://github.com/visualizevalue/ratio/tree/682abc1d65f406029faee91c18187ab3fbcd91de), reviewed at commit [`682abc1d65f406029faee91c18187ab3fbcd91de`](https://github.com/visualizevalue/ratio/commit/682abc1d65f406029faee91c18187ab3fbcd91de) on September 16, 2026. The upstream application source and this derivative are licensed under [GNU GPL v3](LICENSE), and the corresponding source and build script are included here.
+
+go/outside uses new fork-owned lowercase branding and a new ratio-circle icon. The Ratio name, Ratio icon, Visualize Value name, and other upstream brand assets are not used or granted by this license. This project does not connect to upstream commercial services.

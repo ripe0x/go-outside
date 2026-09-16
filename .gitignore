@@ -1,13 +1,14 @@
-node_modules/
-dist/
-.next/
-.vinext/
-.wrangler/
-.env*
+# Local macOS build products
+native/GoOutside.app/
+native/*.app/
+native/Resources/*.iconset/
+
+# Swift and Xcode scratch output
+.build/
+DerivedData/
+*.swiftmodule
+*.swiftdoc
+*.swiftsourceinfo
+
+# macOS metadata
 .DS_Store
-downloads/
-native/Ratio.app/Contents/MacOS/
-native/Ratio.app/Contents/_CodeSignature/
-native/vendor/
-native/Ratio.app/Contents/Frameworks/
-native/.release/
