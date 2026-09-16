@@ -30,6 +30,12 @@ func runAtmosphereTests() {
     atmosphereCheck(dusk.phase > 0.74 && dusk.phase < 0.75, "Dusk must approach the sunset phase")
     atmosphereCheck(midday.radius > dusk.radius && midday.intensity > dusk.intensity, "Noon must be broader and brighter than dusk")
     atmosphereCheck(dusk.stretchX > dusk.stretchY, "Dusk must become a low, elongated horizon field")
+    let nextTwilightSecond = DaylightAtmosphere.configuration(
+        at: sunset.addingTimeInterval(-59),
+        solar: solar(total: total, remaining: 59, state: .daylight, sunrise: nil, sunset: sunset),
+        calendar: calendar
+    )
+    atmosphereCheck(dusk.nightAmount == nextTwilightSecond.nightAmount, "Twilight color must remain stable between minute-level changes")
 
     let preSunrise = DaylightAtmosphere.configuration(
         at: sunrise.addingTimeInterval(-1),
@@ -129,6 +135,22 @@ func runAtmosphereTests() {
         previousBrightArea = peak
     }
 
+    let evening = DaylightAtmosphere.configuration(
+        at: sunset.addingTimeInterval(3_600),
+        solar: solar(total: total, remaining: 0, state: .afterSunset, sunrise: nextDay.addingTimeInterval(6 * 3_600), sunset: sunset),
+        calendar: calendar
+    )
+    let earlyMorning = DaylightAtmosphere.configuration(
+        at: sunrise.addingTimeInterval(-3_600),
+        solar: solar(total: total, remaining: total, state: .beforeSunrise, sunrise: sunrise, sunset: sunset),
+        calendar: calendar
+    )
+    let midnight = DaylightAtmosphere.configuration(
+        at: dayStart,
+        solar: solar(total: total, remaining: total, state: .beforeSunrise, sunrise: sunrise, sunset: sunset),
+        calendar: calendar
+    )
+
     let polarDay = DaylightAtmosphere.configuration(
         at: dayStart.addingTimeInterval(12 * 3_600),
         solar: solar(total: 86_400, remaining: 43_200, state: .polarDay, sunrise: nil, sunset: nil),
@@ -140,15 +162,28 @@ func runAtmosphereTests() {
         calendar: calendar
     )
     atmosphereCheck(polarDay.intensity > polarNight.intensity && polarDay.radius > polarNight.radius, "Polar conditions must remain visually distinct")
-    for configuration in [midday, dusk, preSunrise, atSunrise, atSunset, unknown, night, polarDay, polarNight] {
+    for (name, configuration) in [("one hour after sunset", evening), ("one hour before sunrise", earlyMorning), ("midnight", midnight), ("polar night", polarNight)] {
+        let pixels = atmospherePixels(configuration)
+        atmosphereCheck(configuration.nightAmount == 1, "Solar night must select the night palette at \(name)")
+        atmosphereCheck(pixels.mean < 0.12 && pixels.peak < 0.30, "Night must stay restrained without daylight glare at \(name)")
+        atmosphereCheck(pixels.blue > pixels.red * 2 && pixels.blue > pixels.green * 1.5, "Night must read as deep cool indigo at \(name)")
+        atmosphereCheck(pixels.peak > pixels.mean + 0.05, "Night must preserve a visible soft glow at \(name)")
+    }
+    let beforeSunrisePixels = atmospherePixels(preSunrise)
+    let sunrisePixels = atmospherePixels(atSunrise)
+    let sunsetPixels = atmospherePixels(atSunset)
+    atmosphereCheck(abs(beforeSunrisePixels.mean - sunrisePixels.mean) < 0.01, "Rendered brightness must remain continuous at sunrise")
+    atmosphereCheck(abs(duskPixels.mean - sunsetPixels.mean) < 0.01, "Rendered brightness must remain continuous at sunset")
+    atmosphereCheck(atSunset.nightAmount == 1 && atSunrise.nightAmount == 1 && midday.nightAmount == 0, "Twilight must connect the daylight field to the night field")
+    for configuration in [midday, dusk, preSunrise, atSunrise, atSunset, unknown, night, evening, earlyMorning, midnight, polarDay, polarNight] {
         atmosphereCheck(
             configuration.phase.isFinite && configuration.centerX.isFinite && configuration.centerY.isFinite
                 && configuration.radius.isFinite && configuration.stretchX.isFinite && configuration.stretchY.isFinite
-                && configuration.angle.isFinite && configuration.intensity.isFinite,
+                && configuration.angle.isFinite && configuration.intensity.isFinite && configuration.nightAmount.isFinite,
             "Atmosphere geometry and brightness must remain finite"
         )
     }
-    print("PASS: deterministic colored atmosphere phase, airy distorted field, daylight movement, transitions and polar fallbacks")
+    print("PASS: deterministic colored atmosphere phase, airy distorted field, daylight movement, cool nighttime glow, transitions and polar fallbacks")
 }
 
 private func solar(
@@ -171,7 +206,7 @@ private func atmosphereCheck(_ condition: @autoclosure () -> Bool, _ message: @a
     precondition(condition(), message())
 }
 
-private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean: CGFloat, peakX: CGFloat, chroma: CGFloat) {
+private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean: CGFloat, peakX: CGFloat, chroma: CGFloat, peak: CGFloat, red: CGFloat, green: CGFloat, blue: CGFloat) {
     let size = NSSize(width: 180, height: 96)
     let image = NSImage(size: size)
     image.lockFocus()
@@ -184,6 +219,9 @@ private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean
     var brightest: CGFloat = -1
     var peakX: CGFloat = 0
     var chromaTotal: CGFloat = 0
+    var redTotal: CGFloat = 0
+    var greenTotal: CGFloat = 0
+    var blueTotal: CGFloat = 0
     var luminousCount = 0
     let count = bitmap.pixelsWide * bitmap.pixelsHigh
     for y in 0..<bitmap.pixelsHigh {
@@ -194,6 +232,9 @@ private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean
             let blue = color?.blueComponent ?? 0
             let luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
             luminanceTotal += luminance
+            redTotal += red
+            greenTotal += green
+            blueTotal += blue
             if luminance > brightest {
                 brightest = luminance
                 peakX = CGFloat(x) / CGFloat(bitmap.pixelsWide - 1)
@@ -205,5 +246,5 @@ private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean
             }
         }
     }
-    return (luminanceTotal / CGFloat(count), peakX, chromaTotal / CGFloat(max(1, luminousCount)))
+    return (luminanceTotal / CGFloat(count), peakX, chromaTotal / CGFloat(max(1, luminousCount)), brightest, redTotal / CGFloat(count), greenTotal / CGFloat(count), blueTotal / CGFloat(count))
 }

@@ -16,6 +16,7 @@ struct AtmosphereConfiguration: Equatable {
     let stretchY: CGFloat
     let angle: CGFloat
     let intensity: CGFloat
+    let nightAmount: CGFloat
 }
 
 /// Native procedural color studies for the dedicated top artwork region.
@@ -89,14 +90,14 @@ enum DaylightAtmosphere {
             return AtmosphereConfiguration(
                 phase: phase, dailySeed: seed, centerX: 0.2 + 0.6 * wallPhase,
                 centerY: 0.5, radius: 0.82, stretchX: 1.28, stretchY: 1.10,
-                angle: angleVariation, intensity: 0.86
+                angle: angleVariation, intensity: 0.86, nightAmount: 0
             )
         }
         if solar?.state == .polarNight {
             return AtmosphereConfiguration(
                 phase: phase, dailySeed: seed, centerX: 0.5,
                 centerY: 0.5, radius: 0.40, stretchX: 0.82, stretchY: 0.78,
-                angle: angleVariation * 0.5, intensity: 0.34
+                angle: angleVariation * 0.5, intensity: 0.34, nightAmount: 1
             )
         }
 
@@ -111,7 +112,8 @@ enum DaylightAtmosphere {
             stretchX: 0.82 + 0.46 * daylight + 0.68 * horizon,
             stretchY: 0.78 + 0.34 * daylight - 0.26 * horizon,
             angle: angleVariation + 0.17 * sin((phase - 0.5) * .pi),
-            intensity: clamped(0.36 + 0.48 * daylight + 0.23 * horizon)
+            intensity: clamped(0.36 + 0.48 * daylight + 0.23 * horizon),
+            nightAmount: nightAmount(solar: solar, phase: phase)
         )
     }
 
@@ -148,9 +150,8 @@ enum DaylightAtmosphere {
             bytesPerRow: 0,
             bitsPerPixel: 0
         )!
-        let palette = palette(for: configuration.intensity < 0.35 ? 0 : configuration.phase)
+        let palette = palette(for: configuration.phase)
         let seed = unit(configuration.dailySeed)
-        let daylight = clamped((configuration.intensity - 0.37) / 0.22)
         let pearl = RGB(red: 0.97, green: 0.98, blue: 1.0)
         let air = RGB.mix(palette.outer, pearl, 0.66)
         let brightTint = RGB.mix(palette.inner, pearl, 0.90)
@@ -175,8 +176,14 @@ enum DaylightAtmosphere {
                 var color = RGB.mix(palette.inner, palette.outer, field)
                 color = RGB.mix(color, air, clamped(0.24 + 0.24 * warpedY))
                 color = RGB.mix(color, brightTint, light * 0.94)
-                let night = RGB(red: color.red * 0.16, green: color.green * 0.16, blue: color.blue * 0.24)
-                color = RGB.mix(night, color, daylight)
+                // Solar night owns its palette, independent of the warm horizon
+                // intensity that can persist well after sunset.
+                var night = RGB.mix(
+                    RGB(red: 0.025, green: 0.055, blue: 0.17),
+                    RGB(red: 0.065, green: 0.04, blue: 0.18), field
+                )
+                night = RGB.mix(night, RGB(red: 0.18, green: 0.28, blue: 0.52), light * 0.68)
+                color = RGB.mix(color, night, configuration.nightAmount)
                 let grain = (deterministicGrain(x: x, y: y, seed: configuration.dailySeed) - 0.5) * 0.009
                 color = color.adjustedBrightness(grain)
                 write(color, to: bitmap, x: x, y: y)
@@ -216,6 +223,7 @@ enum DaylightAtmosphere {
             String(Int((configuration.stretchY * 1_000).rounded())),
             String(Int((configuration.angle * 1_000).rounded())),
             String(Int((configuration.intensity * 1_000).rounded())),
+            String(Int((configuration.nightAmount * 1_000).rounded())),
             "\(width)x\(height)"
         ]
         return values.joined(separator: ":") as NSString
@@ -256,6 +264,30 @@ enum DaylightAtmosphere {
             guard let sunset = solar.nextSunset, sunset < day.end else { return wallPhase }
             return 0.75 + 0.25 * clamped(now.timeIntervalSince(sunset) / day.end.timeIntervalSince(sunset))
         }
+    }
+
+    private static func nightAmount(solar: SolarSnapshot?, phase: CGFloat) -> CGFloat {
+        let twilight: Double = 20 * 60
+        let amount: CGFloat
+        if let solar {
+            switch solar.state {
+            case .beforeSunrise, .afterSunset, .polarNight:
+                return 1
+            case .polarDay:
+                return 0
+            case .daylight:
+                let elapsed = solar.totalDaylightSeconds - solar.remainingSeconds
+                let boundaryDistance = min(elapsed, solar.remainingSeconds)
+                let minuteDistance = (boundaryDistance / 60).rounded() * 60
+                amount = 1 - clamped(minuteDistance / twilight)
+            }
+        } else {
+            // Without location this remains decoration, never a solar claim.
+            let boundaryDistance = min(phase - 0.25, 0.75 - phase)
+            amount = 1 - clamped(boundaryDistance / (20.0 / 1_440))
+        }
+        let smooth = amount * amount * (3 - 2 * amount)
+        return (smooth * 1_000).rounded() / 1_000
     }
 
     private static func dateSeed(for date: Date, calendar: Calendar) -> UInt64 {

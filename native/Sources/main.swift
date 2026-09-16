@@ -109,6 +109,8 @@ private enum PreviewRenderer {
             ("atmosphere-dawn", model(2 * 3_600, solarDawn, "Brooklyn, NY", now: dawn), .main, "", false, []),
             ("atmosphere-noon", model(5 * 3_600, solarNoon, "Brooklyn, NY", now: noon), .main, "", false, []),
             ("atmosphere-sunset", model(7 * 3_600, solarSunset, "Brooklyn, NY", now: sunset), .main, "", false, []),
+            ("atmosphere-evening", model(7 * 3_600 + 34 * 60 + 12, solarNight, "Brooklyn, NY", now: date(16, 19)), .main, "", false, []),
+            ("atmosphere-midnight", model(0, solarDawn, "Brooklyn, NY", now: date(16, 0)), .main, "", false, []),
             ("atmosphere-night", model(8 * 3_600, solarNight, "Brooklyn, NY", now: night), .main, "", false, []),
             ("atmosphere-next-day", model(1 * 3_600, solarNoon, "Brooklyn, NY", now: nextDayNoon), .main, "", false, [])
         ]

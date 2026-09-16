@@ -42,7 +42,7 @@ enum OutsideFormat {
     private static func clockSeconds(_ seconds: Double, remaining: Bool) -> Int? {
         guard seconds.isFinite else { return nil }
         let safeSeconds = min(max(0, seconds), 7 * 86400)
-        // A countdown must not display zero before the daylight has ended.
+        // A countdown must not display zero before the event has arrived.
         return Int(remaining ? ceil(safeSeconds) : floor(safeSeconds))
     }
 
@@ -62,25 +62,30 @@ struct OutsideModel {
     var now: Date = Date()
 
     var computerText: String { OutsideFormat.duration(computer) }
-    var daylightText: String { solar.map { OutsideFormat.duration($0.remainingSeconds, remaining: true) } ?? "—" }
     var computerClock: String { OutsideFormat.clock(computer) }
-    var daylightClock: String { solar.map { OutsideFormat.clock($0.remainingSeconds, remaining: true) } ?? "—" }
     var ratio: RatioState { RatioState.make(computer: computer, daylight: solar?.remainingSeconds) }
+    var isNight: Bool {
+        guard let solar else { return false }
+        return solar.state == .beforeSunrise || solar.state == .afterSunset || solar.state == .polarNight
+    }
+    var solarSeconds: Double? {
+        guard let solar else { return nil }
+        if isNight {
+            guard let sunrise = solar.nextSunrise else { return nil }
+            let remaining = sunrise.timeIntervalSince(now)
+            return remaining.isFinite ? max(0, remaining) : nil
+        }
+        return solar.remainingSeconds
+    }
+    var solarLabel: String { isNight ? "Until sunrise" : "Daylight left" }
+    var solarClock: String { solarSeconds.map { OutsideFormat.clock($0, remaining: true) } ?? "—" }
+    var solarText: String { solarSeconds.map { OutsideFormat.duration($0, remaining: true) } ?? "—" }
     var accessibility: String {
         let computer = OutsideFormat.accessibleDuration(self.computer)
-        let daylight = solar.map { OutsideFormat.accessibleDuration($0.remainingSeconds, remaining: true) + " of daylight remaining." }
-            ?? "Daylight is unknown. Set your location."
-        return "\(computer) on your computer today. \(daylight)" + (isAway ? " Tracking is away." : "")
-    }
-    var message: String {
-        guard let solar = solar else { return "Allow location to find your daylight." }
-        switch solar.state {
-        case .polarNight: return "No daylight today. Tomorrow is another day."
-        case .polarDay: return "Daylight all day. Go catch some."
-        case .beforeSunrise: return "The sun's not up yet."
-        case .afterSunset: return "The sun clocked out. You can too."
-        case .daylight: return solar.remainingSeconds <= 3600 ? "Last light. Go/outside?" : "Still time to go/outside."
-        }
+        let light = solarSeconds.map {
+            OutsideFormat.accessibleDuration($0, remaining: true) + (isNight ? " until sunrise." : " of daylight remaining.")
+        } ?? (isNight ? "Next sunrise is unavailable." : "Daylight is unknown. Set your location.")
+        return "\(computer) on your computer today. \(light)" + (isAway ? " Tracking is away." : "")
     }
     var context: String {
         guard let solar = solar else { return "Sunrise and sunset need your location." }
@@ -88,8 +93,8 @@ struct OutsideModel {
         switch solar.state {
         case .polarDay: prefix = "Daylight until midnight"
         case .polarNight: prefix = "No sunrise today"
-        case .beforeSunrise: prefix = solar.nextSunrise.map { "Sunrise ~" + OutsideFormat.time($0) } ?? "Before sunrise"
-        case .daylight, .afterSunset: prefix = solar.nextSunset.map { "Sunset ~" + OutsideFormat.time($0) } ?? "Sunset has passed"
+        case .beforeSunrise, .afterSunset: prefix = solar.nextSunrise.map { "Sunrise ~" + OutsideFormat.time($0) } ?? "Next sunrise unavailable"
+        case .daylight: prefix = solar.nextSunset.map { "Sunset ~" + OutsideFormat.time($0) } ?? "Sunset unavailable"
         }
         return prefix + " · " + (isLastKnown ? "Last known location" : locationName)
     }

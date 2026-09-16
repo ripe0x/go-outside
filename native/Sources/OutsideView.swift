@@ -111,16 +111,16 @@ final class OutsideView: NSView {
     var onLoginChanged: ((Bool) -> Void)?
     var previewReducedTransparency: Bool?
 
-    private(set) var preferredSize = NSSize(width: 360, height: 264)
+    private(set) var preferredSize = NSSize(width: 360, height: 232)
     var atmosphereBounds: NSRect {
         if screen == .main {
-            return NSRect(x: bounds.minX, y: bounds.minY + 144, width: bounds.width, height: 120)
+            return NSRect(x: bounds.minX, y: bounds.minY + 112, width: bounds.width, height: 120)
         }
         return NSRect(x: bounds.minX, y: bounds.minY + bounds.height * 2 / 3, width: bounds.width, height: bounds.height / 3)
     }
     var contentBounds: NSRect {
         if screen == .main {
-            return NSRect(x: bounds.minX, y: bounds.minY, width: bounds.width, height: 144)
+            return NSRect(x: bounds.minX, y: bounds.minY, width: bounds.width, height: 112)
         }
         return NSRect(x: bounds.minX, y: bounds.minY, width: bounds.width, height: bounds.height * 2 / 3)
     }
@@ -128,14 +128,13 @@ final class OutsideView: NSView {
         let body = contentBounds
         switch screen {
         case .main:
-            // These are the visible clock, label, and footer rectangles. Keeping the
+            // These are the visible clock and label rectangles. Keeping the
             // layout here makes the rendered geometry available to view inspection.
             return [
-                NSRect(x: body.minX + 28, y: body.minY + 72, width: 124, height: 40),
-                NSRect(x: body.minX + 208, y: body.minY + 72, width: 124, height: 40),
-                NSRect(x: body.minX + 28, y: body.minY + 56, width: 124, height: 16),
-                NSRect(x: body.minX + 208, y: body.minY + 56, width: 124, height: 16),
-                NSRect(x: body.minX, y: body.minY, width: body.width, height: 32)
+                NSRect(x: body.minX + 28, y: body.minY + 40, width: 124, height: 40),
+                NSRect(x: body.minX + 208, y: body.minY + 40, width: 124, height: 40),
+                NSRect(x: body.minX + 28, y: body.minY + 24, width: 124, height: 16),
+                NSRect(x: body.minX + 208, y: body.minY + 24, width: 124, height: 16)
             ]
         case .setup:
             return [NSRect(x: 24, y: body.maxY - 42, width: 312, height: 22), NSRect(x: 24, y: body.maxY - 90, width: 312, height: 38), NSRect(x: 24, y: body.maxY - 140, width: 312, height: 38), NSRect(x: 24, y: 96, width: 312, height: 30)]
@@ -181,7 +180,7 @@ final class OutsideView: NSView {
         self.model = model; self.screen = screen; self.locationMessage = locationMessage
         self.isRequesting = isRequesting; self.loginEnabled = loginEnabled; self.candidates = candidates; candidateSignature = signature
         switch screen {
-        case .main: preferredSize = NSSize(width: 360, height: 264)
+        case .main: preferredSize = NSSize(width: 360, height: 232)
         case .setup, .settings: preferredSize = NSSize(width: 360, height: 540)
         case .city: preferredSize = NSSize(width: 360, height: 480)
         }
@@ -192,7 +191,7 @@ final class OutsideView: NSView {
 
     private func accessibilitySummary() -> String {
         switch screen {
-        case .main: return "\(model.accessibility) \(model.context). \(model.message)"
+        case .main: return "\(model.accessibility) \(model.context)."
         case .setup:
             let purpose = locationMessage.isEmpty ? "Your location is used to estimate sunrise and sunset." : locationMessage
             return "go/outside setup. Tracking runs only while go/outside is open. It pauses after 60 seconds without input. \(purpose)"
@@ -222,7 +221,7 @@ final class OutsideView: NSView {
     private func drawMain(dark: Bool) {
         let layout = contentTextBounds
         let muted = mutedColor(dark: dark)
-        let panels = NSRect(x: contentBounds.minX, y: layout[4].maxY, width: contentBounds.width, height: contentBounds.maxY - layout[4].maxY)
+        let panels = contentBounds
         let leftPanel = NSRect(x: panels.minX, y: panels.minY, width: panels.width / 2, height: panels.height)
         let rightPanel = NSRect(x: leftPanel.maxX, y: panels.minY, width: panels.width / 2, height: panels.height)
         (dark ? NSColor(calibratedWhite: 0.115, alpha: 0.98) : NSColor(calibratedWhite: 0.955, alpha: 0.98)).setFill()
@@ -232,16 +231,13 @@ final class OutsideView: NSView {
         (dark ? NSColor.white.withAlphaComponent(0.18) : NSColor.black.withAlphaComponent(0.18)).setFill()
         NSRect(x: leftPanel.maxX - 0.5, y: panels.minY, width: 1, height: panels.height).fill()
 
-        (dark ? NSColor(calibratedWhite: 0.018, alpha: 1) : NSColor(calibratedWhite: 0.08, alpha: 1)).setFill()
-        layout[4].fill()
         let computerClock = model.computerClock
-        let daylightClock = model.daylightClock
+        let daylightClock = model.solarClock
         let numeralSize = fittedClockNumeralSize(computer: computerClock, daylight: daylightClock, maximumWidth: layout[0].width)
         drawClock(computerClock, in: layout[0], numeralSize: numeralSize, dark: dark)
         drawClock(daylightClock, in: layout[1], numeralSize: numeralSize, dark: dark)
         drawText("Spent online", in: layout[2], font: NSFont.systemFont(ofSize: 11, weight: .regular), color: muted)
-        drawText("Daylight left", in: layout[3], font: NSFont.systemFont(ofSize: 11, weight: .regular), color: muted)
-        drawText(model.message.hasSuffix(".") ? String(model.message.dropLast()) : model.message, in: layout[4].insetBy(dx: 12, dy: 8), font: NSFont.systemFont(ofSize: 12, weight: .semibold), alignment: .center, color: NSColor(calibratedWhite: 0.92, alpha: 1))
+        drawText(model.solarLabel, in: layout[3], font: NSFont.systemFont(ofSize: 11, weight: .regular), color: muted)
     }
 
     private func fittedClockNumeralSize(computer: String, daylight: String, maximumWidth: CGFloat) -> CGFloat {

@@ -358,7 +358,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             lastIconState = iconState
             lastIconMinute = minute
         }
-        button.toolTip = "\(model.computerText) on your computer today. \(model.daylightText) of daylight remaining."
+        button.toolTip = "\(model.computerText) on your computer today. \(model.solarText)" + (model.isNight ? " until sunrise." : " of daylight remaining.")
         button.setAccessibilityLabel(model.accessibility)
     }
 

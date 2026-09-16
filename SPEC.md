@@ -1,6 +1,6 @@
 # go/outside
 
-A tiny macOS menu-bar app that compares active computer time today with daylight remaining today.
+A tiny macOS menu-bar app that compares active computer time today with daylight remaining during sunlight hours, and counts down to sunrise at night.
 
 **The question:** “How much of today have I spent here, and how much daylight can I still catch?”
 
@@ -30,7 +30,7 @@ Keep v1 to one comparison, one location setup, and a small settings sheet.
 
 - Native Mac menu-bar app; no Dock icon or main dashboard.
 - Computer time means active use of this Mac while go/outside is running. It includes work, browsing, games, and interaction with go/outside itself.
-- Daylight means estimated sunrise-to-sunset daylight still available in today's Mac calendar day, at the selected location. It excludes twilight.
+- Daylight means estimated sunrise-to-sunset daylight still available in today's Mac calendar day, at the selected location. It excludes twilight. After sunset and before sunrise, the right clock instead shows elapsed seconds until the next estimated sunrise.
 - This does not measure time outdoors, total time indoors, phone use, or usage on other computers.
 - No Screen Time import or reconstruction of use before installation, launch, or while the app is closed. Explain this on first launch and in the computer-time tooltip.
 - No accounts, server, analytics, notifications, goals, streaks, rankings, per-app reports, historical charts, or website.
@@ -39,7 +39,7 @@ Keep v1 to one comparison, one location setup, and a small settings sheet.
 
 Keep Ratio's sparse comparison and compact popover. Use black, white, and neutral greys for UI elements only, following system light/dark appearance. Keep color in the artwork above them. Use clear system labels, condensed tabular clock numerals, consistent panel padding, and equal left-aligned comparison columns.
 
-The main 120-point banner and the top third of auxiliary popovers contain only original colorful abstract light artwork, with no title, labels, buttons, or glass card over it. Use an airy, vibrant gradient with two related hues, gentle distortion, a broad bright area, and restrained fine grain. Create original artwork locally. Brightness, palette, and shape evolve through dawn, noon, sunset, and night using the calculated solar phase; keep the composition simple and fully inside the artwork region. Move the main bright area monotonically from left to right between sunrise and sunset, distorting the surrounding color field; avoid rings and isolated objects. Add a subtle deterministic daily variation in the shape. Without location, use a cosmetic wall-clock progression while daylight stays unknown.
+The main 120-point banner and the top third of auxiliary popovers contain only original colorful abstract light artwork, with no title, labels, buttons, or glass card over it. Use an airy, vibrant gradient with two related hues, gentle distortion, a broad bright area, and restrained fine grain. Create original artwork locally. Brightness, palette, and shape evolve through dawn, noon, sunset, and night using the calculated solar phase; keep the composition simple and fully inside the artwork region. Move the main bright area monotonically from left to right between sunrise and sunset, distorting the surrounding color field; avoid rings and isolated objects. Add a subtle deterministic daily variation in the shape. At night use a distinctly dark indigo/blue field with a restrained cool glow, including polar night. Fade into this palette in the last 20 minutes of daylight and out during the first 20 minutes after sunrise. Without location, use a cosmetic wall-clock progression while daylight stays unknown.
 
 Place all information and essential setup controls below the artwork. Native AppKit visual-effect material supplies a very subtle blur behind this region only; a near-opaque neutral tint keeps text contrast stable against the desktop. Use opaque grayscale text with strong contrast in both appearances. Reduce Transparency makes the information region opaque while preserving the decorative gradient. Update through the existing open-popover refresh, with no continuous animation loop or redraw of closed UI.
 
@@ -65,27 +65,27 @@ Zero and unknown cases:
 - Missing location: circle with a question mark; show `—` for daylight and do not compute a ratio.
 - Before sunrise and during polar day, use the same `S / (S + D)` calculation with the daylight rules below. Do not substitute a full daylight ring.
 
-The menu-bar tooltip and VoiceOver label identify both durations. Remove the solid/hollow legend from the interface and accessibility copy; retain the ratio-circle calculation.
+The menu-bar tooltip and VoiceOver label identify computer time and the currently displayed daylight or sunrise countdown. Remove the solid/hollow legend from the interface and accessibility copy; retain the ratio-circle calculation.
 
 ### Popover
 
-The main comparison is 360 × 264 points: a 120-point gradient above two 180 × 112-point clock panels and a 32-point message footer. Setup, settings, and the city fallback may be taller to accommodate their essential controls, retaining the same one-third/two-thirds division with no tabs or scrolling.
+The main comparison is 360 × 232 points: a 120-point gradient above two 180 × 112-point clock panels. Setup, settings, and the city fallback may be taller to accommodate their essential controls, retaining the same one-third/two-thirds division with no tabs or scrolling.
 
-Below the gradient, show two equal panels with subtly different neutral fills and a fine vertical divider. Left-align tall condensed clock numerals with smaller muted H/M/S unit letters on the same baseline. Place `Spent online` and `Daylight left` underneath. Center the state message in a separate dark footer. Omit the visible brand header, away/today badge, slash, and sunrise/sunset context from the main view; retain context and away state in accessibility and location settings. Tune against `23h 59m 59s` so long values fit.
+Below the gradient, show two equal panels with subtly different neutral fills and a fine vertical divider. Left-align tall condensed clock numerals with smaller muted H/M/S unit letters on the same baseline. Place `Spent online` and either `Daylight left` or `Until sunrise` underneath. No footer or motivational messages. Omit the visible brand header, away/today badge, slash, and sunrise/sunset context from the main view; retain context and away state in accessibility and location settings. Tune against `23h 59m 59s` so long values fit.
 
 Remove Settings and Quit buttons from the popover. Right-click or Control-click the menu-bar item for a native menu with Settings and Quit. Left-click continues to toggle the comparison. While the app is active, ⌘, opens Settings and ⌘Q quits. Keep Back on auxiliary screens and retain necessary location, city-search, and login controls.
 
 Keep the ratio circle in the menu bar and the labeled durations in the popover. Do not add a second chart, progress bar, or daily percentage score.
 
-State copy, evaluated in this order:
+Solar clock states:
 
-1. Missing location: `Allow location to find your daylight.` Offer the city fallback. Show computer time and `—` for daylight, never a fabricated estimate.
-2. Polar night: `No daylight today. Tomorrow is another day.`
-3. Polar day: `Daylight all day. Go catch some.` Show daylight remaining until local midnight, and omit a nonexistent sunset.
-4. Before sunrise: `The sun's not up yet.` Accessibility uses estimated sunrise time instead of sunset.
-5. After sunset: `The sun clocked out. You can too.` Keep counting computer use; daylight remains `0s`.
-6. During daylight, with 60 minutes or less left: `Last light. Go/outside?`
-7. Other daytime: `Still time to go/outside.`
+- Missing location: show `—` for daylight. Location setup and city fallback remain available.
+- During daylight: show estimated daylight remaining with the label `Daylight left`.
+- After sunset and before sunrise: show `nextSunrise - now` with the label `Until sunrise`, refreshing each second. It continues across midnight independently of the computer counter's daily reset. Switch back to daylight at the actual sunrise boundary.
+- Polar night: use the nighttime gradient and `Until sunrise`; show `—` when the calculator has no upcoming sunrise estimate, never a fabricated countdown.
+- Polar day: show daylight remaining until local midnight and retain `Daylight left`.
+
+The ratio circle continues comparing actual available daylight, including zero after sunset. Time until sunrise is not counted as available daylight.
 
 Accessibility identifies the away state during idle, screen-off, sleep, or inactive-session states. The saved computer duration stays visible and daylight continues to follow wall-clock time. No punitive red states, modal nags, or push notifications.
 
@@ -148,7 +148,7 @@ Recalculate solar intervals on launch, location change, calendar-date/timezone c
 - Store seconds; show the main count-up and countdown clocks with unit suffixes, such as `1h 34m 12s`, omitting zero-valued units.
 - Computer time rounds down to completed seconds. Daylight rounds up to the next second while positive, so it never displays zero before daylight actually ends.
 - Examples: `0s`, `8m 23s`, `1h 3m 7s`, `4h 12m 59s`.
-- A missing location uses `—`; zero available daylight uses `0s`.
+- A missing location or unavailable next-sunrise estimate uses `—`. A positive sunrise countdown rounds up to the next second, and never displays zero early.
 - The menu bar shows only the ratio circle; its tooltip retains compact minute precision (`8m`, `1h03`), rounding computer time down and positive daylight up.
 - Update the ratio icon once per minute or on state changes. Update the open popover as needed; avoid redrawing closed UI every second.
 - VoiceOver reads a full sentence: `Four hours twelve minutes five seconds on your computer today. Two hours eight minutes seven seconds of daylight remaining.` All controls support keyboard navigation; Escape closes the popover.
@@ -219,9 +219,9 @@ The repository explicitly licenses application source under GPL-3.0 and excludes
 - Solar fixtures for equatorial and mid-latitude locations agree with an independent reference within 2 minutes. Include dates around DST and polar fixtures with no crossings; avoid live network tests.
 - A selected location in a different timezone still produces the correct daylight intervals within the Mac's current calendar day. Polar day shows the actual duration until midnight; polar night shows zero.
 - Granted location access produces daylight without a city-search step. Denied location access and failed city lookup keep tracking usable and daylight unknown when no saved coordinates exist. With a saved fix or city, offline launch shows daylight; failed automatic refresh exposes the last-known-location state. Verify one-shot refresh timing and that manual-city mode never starts location updates.
-- Unknown and zero daylight are visually distinct. Positive daylight never rounds to zero early. Long durations fit in the popover in both appearances; the menu-bar item remains icon-only.
+- Unknown and zero daylight are visually distinct; nighttime uses an accurately labeled sunrise countdown. Positive daylight never rounds to zero early. Long durations fit in the popover in both appearances; the menu-bar item remains icon-only.
 - The ratio circle is two-thirds solid for `S = 4h, D = 2h`, hollow for `S = 0, D > 0`, and solid for `S > 0, D = 0`. Both-zero and missing-location states avoid division by zero and remain distinguishable. Check actual 20-point rendering, light/dark appearance, and the accessible duration labels.
-- Dawn, noon, sunset, and night previews show changing colored light, brightness, and organic shape in the dedicated banner, with no content overlapping it in either appearance. The same date and time yield the same background, adjacent dates vary subtly, and polar/unknown states remain finite and readable. All controls fit below the gradient; Settings and Quit work through the native context menu. Reduce Transparency retains an opaque, readable surface.
+- Dawn, noon, sunset, and night previews show changing colored light, brightness, and organic shape in the dedicated banner, with no content overlapping it in either appearance. The same date and time yield the same background, adjacent dates vary subtly, and polar/unknown states remain finite and readable. After-sunset and pre-sunrise previews use dark cool artwork and an accurate Until sunrise clock with no footer. All controls fit below the gradient; Settings and Quit work through the native context menu. Reduce Transparency retains an opaque, readable surface.
 - Settings, city selection, and quitting work with keyboard and VoiceOver. Login launch starts in the background after setup on both macOS 12 and a current macOS version.
 - Built binary includes Intel and Apple silicon slices with the advertised macOS 12 deployment target. Fork resources/configuration contain no upstream updater endpoint, purchaser flow, telemetry, Apple Events capability, or original branding.
 

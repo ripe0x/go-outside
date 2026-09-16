@@ -38,9 +38,11 @@ func runViewTests() {
     }
 
     render(.main, model: long)
-    precondition(view.frame.size == NSSize(width: 360, height: 264))
+    precondition(view.frame.size == NSSize(width: 360, height: 232))
     precondition(view.subviews.compactMap({ $0 as? NSButton }).isEmpty, "Main must not expose settings or quit buttons")
     checkGeometry(main: true)
+    precondition(view.contentTextBounds.count == 4, "Main must contain only two clocks and their labels")
+    precondition(!(view.accessibilityLabel() ?? "").contains("clocked out"), "Main must not include motivational copy")
 
     render(.setup)
     precondition(view.frame.size == NSSize(width: 360, height: 540))
