@@ -11,6 +11,7 @@ struct GoOutsideMain {
             runAtmosphereTests()
             runPresentationTests()
             runLocationTests()
+            runStatusMenuTests()
             runViewTests()
             print("PASS: go/outside self-test")
             return
@@ -113,45 +114,37 @@ private enum PreviewRenderer {
 
         for appearance in [("light", NSAppearance.Name.aqua), ("dark", NSAppearance.Name.darkAqua)] {
             for item in cases {
-                let backing = PreviewBackdrop(frame: NSRect(x: 0, y: 0, width: 360, height: 400))
-                backing.appearance = NSAppearance(named: appearance.1)
-                let glass = NSVisualEffectView(frame: backing.bounds)
-                glass.material = .popover
-                glass.blendingMode = .behindWindow
-                glass.state = .active
-                glass.autoresizingMask = [.width, .height]
-                glass.appearance = backing.appearance
-                backing.addSubview(glass)
-                let view = OutsideView(frame: glass.bounds)
-                view.autoresizingMask = [.width, .height]
-                view.appearance = backing.appearance
-                glass.addSubview(view)
-                view.render(model: item.1, screen: item.2, locationMessage: item.3, isRequesting: item.4, candidates: item.5, loginEnabled: false)
-                backing.setFrameSize(view.preferredSize)
-                glass.frame = backing.bounds
-                view.frame = glass.bounds
+                let backing = makeView(appearance: appearance.1, model: item.1, screen: item.2,
+                                       message: item.3, requesting: item.4, candidates: item.5)
                 try png(of: backing).write(to: directory.appendingPathComponent("\(item.0)-\(appearance.0).png"))
             }
-            let backing = PreviewBackdrop(frame: NSRect(x: 0, y: 0, width: 360, height: 304))
-            backing.appearance = NSAppearance(named: appearance.1)
-            let glass = NSVisualEffectView(frame: backing.bounds)
-            glass.material = .popover
-            glass.blendingMode = .behindWindow
-            glass.state = .active
-            glass.appearance = backing.appearance
-            backing.addSubview(glass)
-            let view = OutsideView(frame: glass.bounds)
-            view.autoresizingMask = [.width, .height]
-            view.appearance = backing.appearance
-            view.previewReducedTransparency = true
-            glass.addSubview(view)
-            view.render(model: model(4 * 3_600, solarNoon, "Brooklyn, NY", now: noon), screen: .main,
-                        locationMessage: "", isRequesting: false, candidates: [], loginEnabled: false)
-            backing.setFrameSize(view.preferredSize)
-            glass.frame = backing.bounds
-            view.frame = glass.bounds
+            let backing = makeView(appearance: appearance.1,
+                                   model: model(4 * 3_600, solarNoon, "Brooklyn, NY", now: noon),
+                                   screen: .main, message: "", requesting: false, candidates: [], reducedTransparency: true)
             try png(of: backing).write(to: directory.appendingPathComponent("reduced-transparency-\(appearance.0).png"))
         }
+    }
+
+    private static func makeView(appearance: NSAppearance.Name, model: OutsideModel, screen: OutsideScreen,
+                                 message: String, requesting: Bool, candidates: [CityCandidate],
+                                 reducedTransparency: Bool = false) -> NSView {
+        let backing = PreviewBackdrop(frame: NSRect(x: 0, y: 0, width: 360, height: 360))
+        backing.appearance = NSAppearance(named: appearance)
+        let glass = NSVisualEffectView(frame: .zero)
+        glass.material = .popover
+        glass.blendingMode = .behindWindow
+        glass.state = .active
+        glass.isHidden = reducedTransparency
+        backing.addSubview(glass)
+        let view = OutsideView(frame: backing.bounds)
+        view.previewReducedTransparency = reducedTransparency
+        backing.addSubview(view)
+        view.render(model: model, screen: screen, locationMessage: message, isRequesting: requesting,
+                    candidates: candidates, loginEnabled: false)
+        backing.setFrameSize(view.preferredSize)
+        view.frame = backing.bounds
+        glass.frame = view.contentBounds
+        return backing
     }
 
     private static func png(of view: NSView) throws -> Data {

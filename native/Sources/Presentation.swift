@@ -55,7 +55,7 @@ struct OutsideModel {
         let computer = OutsideFormat.accessibleDuration(self.computer)
         let daylight = solar.map { OutsideFormat.accessibleDuration($0.remainingSeconds, remaining: true) + " of daylight remaining." }
             ?? "Daylight is unknown. Set your location."
-        return "\(computer) on your computer today. \(daylight) Solid: computer. Hollow: daylight left." + (isAway ? " Tracking is away." : "")
+        return "\(computer) on your computer today. \(daylight)" + (isAway ? " Tracking is away." : "")
     }
     var message: String {
         guard let solar = solar else { return "Allow location to find your daylight." }

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 func runAtmosphereTests() {
@@ -27,7 +28,8 @@ func runAtmosphereTests() {
         calendar: calendar
     )
     atmosphereCheck(dusk.phase > 0.74 && dusk.phase < 0.75, "Dusk must approach the sunset phase")
-    atmosphereCheck(dusk.warmth > midday.warmth, "Dusk should be warmer than midday")
+    atmosphereCheck(midday.radius > dusk.radius && midday.intensity > dusk.intensity, "Noon must be broader and brighter than dusk")
+    atmosphereCheck(dusk.stretchX > dusk.stretchY, "Dusk must become a low, elongated horizon field")
 
     let preSunrise = DaylightAtmosphere.configuration(
         at: sunrise.addingTimeInterval(-1),
@@ -96,14 +98,21 @@ func runAtmosphereTests() {
     let variation = DaylightAtmosphere.configuration(at: nextDay.addingTimeInterval(12 * 3_600), solar: nil, calendar: calendar)
     atmosphereCheck(midday.dailySeed != variation.dailySeed, "Each calendar date needs a stable distinct seed")
     for configuration in [midday, variation] {
-        atmosphereCheck(configuration.hueOffset >= -0.0225 && configuration.hueOffset <= 0.0225, "Daily hue variation must remain subtle")
-        atmosphereCheck(configuration.paletteShift >= -0.04 && configuration.paletteShift <= 0.04, "Daily palette variation must remain subtle")
         atmosphereCheck(configuration.centerX >= 0.42 && configuration.centerX <= 0.58, "Daily horizontal drift must stay bounded")
-        atmosphereCheck(configuration.centerY >= 0.39 && configuration.centerY <= 0.51, "Daily vertical drift must stay bounded")
+        atmosphereCheck(configuration.centerY >= 0 && configuration.centerY <= 1, "Field center must stay in the artwork region")
+        atmosphereCheck(configuration.radius > 0 && configuration.radius <= 1, "Field radius must remain bounded")
+        atmosphereCheck(configuration.stretchX > 0 && configuration.stretchY > 0 && abs(configuration.angle) < 0.3, "Daily shape variation must remain subtle and valid")
     }
 
     let unknown = DaylightAtmosphere.configuration(at: dayStart.addingTimeInterval(12 * 3_600), solar: nil, calendar: calendar)
     atmosphereCheck(abs(unknown.phase - 0.5) < 0.0001, "Unknown location uses only the Mac wall-clock phase")
+    let night = DaylightAtmosphere.configuration(at: dayStart, solar: nil, calendar: calendar)
+    atmosphereCheck(night.radius < unknown.radius && night.intensity < unknown.intensity, "Night must be dimmer and narrower than noon")
+    let noonPixels = atmospherePixels(midday)
+    let nightPixels = atmospherePixels(night)
+    let duskPixels = atmospherePixels(dusk)
+    atmosphereCheck(noonPixels.mean > nightPixels.mean, "Rendered noon artwork must be brighter than rendered night artwork")
+    atmosphereCheck(abs(noonPixels.centroidY - duskPixels.centroidY) > 8, "Rendered horizon and noon fields must occupy visibly different shapes")
 
     let polarDay = DaylightAtmosphere.configuration(
         at: dayStart.addingTimeInterval(12 * 3_600),
@@ -115,15 +124,16 @@ func runAtmosphereTests() {
         solar: solar(total: 0, remaining: 0, state: .polarNight, sunrise: nil, sunset: nil),
         calendar: calendar
     )
-    atmosphereCheck(polarDay.intensity > polarNight.intensity && polarDay.nightness < polarNight.nightness, "Polar conditions must remain visually distinct")
-    for configuration in [midday, dusk, preSunrise, atSunrise, atSunset, unknown, polarDay, polarNight] {
+    atmosphereCheck(polarDay.intensity > polarNight.intensity && polarDay.radius > polarNight.radius, "Polar conditions must remain visually distinct")
+    for configuration in [midday, dusk, preSunrise, atSunrise, atSunset, unknown, night, polarDay, polarNight] {
         atmosphereCheck(
             configuration.phase.isFinite && configuration.centerX.isFinite && configuration.centerY.isFinite
-                && configuration.intensity.isFinite && configuration.warmth.isFinite && configuration.nightness.isFinite,
-            "Atmosphere coordinates and colors must remain finite"
+                && configuration.radius.isFinite && configuration.stretchX.isFinite && configuration.stretchY.isFinite
+                && configuration.angle.isFinite && configuration.intensity.isFinite,
+            "Atmosphere geometry and brightness must remain finite"
         )
     }
-    print("PASS: deterministic atmosphere phase, bounded daily variation, transitions and polar fallbacks")
+    print("PASS: deterministic monochrome atmosphere phase, shape evolution, transitions and polar fallbacks")
 }
 
 private func solar(
@@ -144,4 +154,26 @@ private func solar(
 
 private func atmosphereCheck(_ condition: @autoclosure () -> Bool, _ message: @autoclosure () -> String) {
     precondition(condition(), message())
+}
+
+private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean: CGFloat, centroidY: CGFloat) {
+    let size = NSSize(width: 180, height: 96)
+    let image = NSImage(size: size)
+    image.lockFocus()
+    DaylightAtmosphere.draw(configuration, in: NSRect(origin: .zero, size: size), dark: false, reducedTransparency: false)
+    image.unlockFocus()
+    guard let bitmap = image.tiffRepresentation.flatMap(NSBitmapImageRep.init(data:)) else {
+        preconditionFailure("Atmosphere artwork must render to a bitmap")
+    }
+    var luminanceTotal: CGFloat = 0
+    var weightedY: CGFloat = 0
+    let count = bitmap.pixelsWide * bitmap.pixelsHigh
+    for y in 0..<bitmap.pixelsHigh {
+        for x in 0..<bitmap.pixelsWide {
+            let luminance = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB)?.redComponent ?? 0
+            luminanceTotal += luminance
+            weightedY += luminance * CGFloat(y)
+        }
+    }
+    return (luminanceTotal / CGFloat(count), weightedY / max(luminanceTotal, 0.0001))
 }

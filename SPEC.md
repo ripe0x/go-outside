@@ -37,11 +37,11 @@ Keep v1 to one comparison, one location setup, and a small settings sheet.
 
 ## Main interface
 
-Keep Ratio's sparse comparison and compact popover, with an original evolving light gradient behind native glass surfaces. Follow system light/dark appearance. Use clear system labels, tabular duration numerals, soft rounded controls, and restrained highlights instead of a rigid grid or a manual theme toggle.
+Keep Ratio's sparse comparison and compact popover. Use black, white, and neutral greys only, following system light/dark appearance. Use clear system labels, tabular duration numerals, consistent 24-point margins, and equal comparison columns.
 
-The background consists of overlapping soft radial fields, inspired by colorful abstract light rather than a copied artwork. It moves through peach/amber dawn, airy cyan/lilac daylight, apricot/rose sunset, and quiet blue night. Sunrise and sunset at the saved location guide the palette. Without location, use a cosmetic wall-clock progression while daylight stays unknown. Add a subtle, deterministic daily variation so each date feels slightly different; keep the typography and comparison stable.
+The top third of each popover contains only an original monochrome radial light field, with no title, labels, buttons, or glass card over it. Its brightness and shape evolve through dawn, noon, sunset, and night using the calculated solar phase. Add a subtle deterministic daily variation in the shape. Without location, use a cosmetic wall-clock progression while daylight stays unknown.
 
-Use native AppKit visual-effect material for a frosted glass appearance compatible with macOS 12. Place the gradient behind the content, keep text contrast strong in both appearances, and provide an opaque readable fallback when Reduce Transparency is enabled. Update the background through the existing open-popover refresh; do not add a continuous animation loop or redraw closed UI.
+Place all information and essential setup controls in the lower two-thirds. Native AppKit visual-effect material supplies a very subtle blur behind this region only; a near-opaque neutral tint keeps text contrast stable against the desktop. Use opaque grayscale text with strong contrast in both appearances. Reduce Transparency makes the information region opaque while preserving the decorative gradient. Update through the existing open-popover refresh, with no continuous animation loop or redraw of closed UI.
 
 The brand is **go/outside**, in lowercase. Use a new ratio-circle icon drawn with native paths. Do not reuse Ratio's logo or Visualize Value branding.
 
@@ -65,28 +65,15 @@ Zero and unknown cases:
 - Missing location: circle with a question mark; show `—` for daylight and do not compute a ratio.
 - Before sunrise and during polar day, use the same `S / (S + D)` calculation with the daylight rules below. Do not substitute a full daylight ring.
 
-The menu-bar tooltip and VoiceOver label identify both durations and the solid/hollow mapping. The main panel includes a compact `Solid: computer · Hollow: daylight left` legend so the icon's meaning is discoverable.
+The menu-bar tooltip and VoiceOver label identify both durations. Remove the solid/hollow legend from the interface and accessibility copy; retain the ratio-circle calculation.
 
 ### Popover
 
-360 × 304 points for the main comparison, 360 × 400 for setup/settings, and 360 × 360 for the city fallback, with no tabs or scrolling.
+The main comparison is 360 × 360 points: a 120-point gradient section above a 240-point information section. Setup, settings, and the city fallback may be taller to accommodate their essential controls, retaining the same one-third/two-thirds division with no tabs or scrolling.
 
-```text
-┌──────────────────────────────────────┐
-│ go/outside                     TODAY │
-├───────────────────┬──────────────────┤
-│ ON YOUR COMPUTER  │ DAYLIGHT LEFT    │
-│      4h12         /       2h08       │
-├───────────────────┴──────────────────┤
-│ Sunset ~6:58 PM · Brooklyn           │
-│                                      │
-│ Still time to go/outside.             │
-├───────────────────┬──────────────────┤
-│ Settings          │ Quit             │
-└───────────────────┴──────────────────┘
-```
+Below the gradient, show `go/outside` and `TODAY` or `AWAY` on one header baseline. Align the two labels and tabular duration values in equal columns. Place the sunrise/sunset context and state message below them, with consistent margins and vertical spacing. Tune against `23h59 / 23h59` so long values fit. The slash compares durations; it is not a percentage or a productivity score.
 
-The diagram above shows content order; the rendered interface uses rounded translucent surfaces and pill controls over the gradient. The durations are the hero, approximately 36-point tabular type, with explicit labels above them. Tune final sizes against `23h59 / 23h59` so the maximum normal-day values fit. The slash is a comparison, not a percentage or a productivity score.
+Remove Settings and Quit buttons from the popover. Right-click or Control-click the menu-bar item for a native menu with Settings and Quit. Left-click continues to toggle the comparison. While the app is active, ⌘, opens Settings and ⌘Q quits. Keep Back on auxiliary screens and retain necessary location, city-search, and login controls.
 
 Keep the ratio circle in the menu bar and the labeled durations in the popover. Do not add a second chart, progress bar, or daily percentage score.
 
@@ -232,8 +219,8 @@ The repository explicitly licenses application source under GPL-3.0 and excludes
 - A selected location in a different timezone still produces the correct daylight intervals within the Mac's current calendar day. Polar day shows the actual duration until midnight; polar night shows zero.
 - Granted location access produces daylight without a city-search step. Denied location access and failed city lookup keep tracking usable and daylight unknown when no saved coordinates exist. With a saved fix or city, offline launch shows daylight; failed automatic refresh exposes the last-known-location state. Verify one-shot refresh timing and that manual-city mode never starts location updates.
 - Unknown and zero daylight are visually distinct. Positive daylight never rounds to zero early. Long durations fit in the menu bar and popover in both appearances.
-- The ratio circle is two-thirds solid for `S = 4h, D = 2h`, hollow for `S = 0, D > 0`, and solid for `S > 0, D = 0`. Both-zero and missing-location states avoid division by zero and remain distinguishable. Check actual 20-point rendering, light/dark appearance, and the accessible solid/hollow legend.
-- Dawn, noon, sunset, and night previews show a gradual background progression in both appearances. The same date and time yield the same background, adjacent dates vary subtly, and polar/unknown states remain finite and readable. Reduce Transparency retains an opaque, readable surface.
+- The ratio circle is two-thirds solid for `S = 4h, D = 2h`, hollow for `S = 0, D > 0`, and solid for `S > 0, D = 0`. Both-zero and missing-location states avoid division by zero and remain distinguishable. Check actual 20-point rendering, light/dark appearance, and the accessible duration labels.
+- Dawn, noon, sunset, and night previews show changing monochrome brightness and shape in the top third, with no content overlapping it in either appearance. The same date and time yield the same background, adjacent dates vary subtly, and polar/unknown states remain finite and readable. All controls fit below the gradient; Settings and Quit work through the native context menu. Reduce Transparency retains an opaque, readable surface.
 - Settings, city selection, and quitting work with keyboard and VoiceOver. Login launch starts in the background after setup on both macOS 12 and a current macOS version.
 - Built binary includes Intel and Apple silicon slices with the advertised macOS 12 deployment target. Fork resources/configuration contain no upstream updater endpoint, purchaser flow, telemetry, Apple Events capability, or original branding.
 

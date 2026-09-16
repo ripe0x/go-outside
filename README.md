@@ -6,7 +6,7 @@ The app uses Apple's Core Location and geocoding services for the one-shot curre
 
 Computer time counts only while go/outside is running. It stops after 60 seconds without input, during sleep or display-off, and while the session is inactive. It does not import historical Screen Time. The circle compares the two durations: solid is computer time divided by computer time plus daylight remaining; hollow is daylight remaining. The numbers beside it show the exact hours and minutes.
 
-The popover uses native frosted glass with a soft radial gradient that follows the day's light and varies subtly by date. Both light and dark appearances are supported, with an opaque fallback for Reduce Transparency. The gradient is drawn locally and needs no images or extra service.
+The top third of the popover contains only a monochrome radial gradient. Its brightness and shape follow the day's light, with subtle variation by date. The comparison below uses evenly spaced black-and-white text over a restrained native glass blur. Both appearances and Reduce Transparency are supported; the gradient is drawn locally without images or an extra service.
 
 Automatic location uses a one-shot refresh on launch and after wake on a new calendar day or when the last fix is at least six hours old. A failed refresh keeps the saved coordinates and shows a last-known-location state. A manually chosen city stays selected until changed.
 
@@ -32,7 +32,7 @@ The bundle identifier `com.gooutside.desktop` and login-helper identifier `com.g
 
 ## Install and launch at login
 
-For a local install, move or copy `GoOutside.app` to `/Applications` and launch it. The app has no Dock icon; use its menu-bar item to open the popover or quit.
+For a local install, move or copy `GoOutside.app` to `/Applications` and launch it. The app has no Dock icon. Click its menu-bar item to open the comparison; right-click or Control-click for Settings and Quit. While the popover is active, ⌘, opens Settings and ⌘Q quits.
 
 Launch at login is off by default. When enabled, macOS registers the bundled helper at `Contents/Library/LoginItems`; the helper starts the parent with `--login-item` in the background and does not activate the popover. On macOS 13 and newer, System Settings may require approval under **General → Login Items**. macOS 12 has no status-query API for the legacy registration call, so the app reports the last successful request on that OS. A signed, stable bundle identity is required for reliable production login-item registration.
 

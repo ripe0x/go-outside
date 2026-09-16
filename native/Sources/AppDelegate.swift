@@ -9,7 +9,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var tracker: ActivityTracker!
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
+    private var popoverView: NSView!
     private var glassView: NSVisualEffectView!
+    private var statusMenu: NSMenu!
     private var outsideView: OutsideView!
     private var timer: Timer?
     private var screen: OutsideScreen = .main
@@ -74,33 +76,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let button = statusItem.button else { return }
         button.target = self
         button.action = #selector(togglePopover)
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.imagePosition = .imageLeft
         button.setAccessibilityRole(.button)
+        button.setAccessibilityHelp("Click to compare today's time. Right-click for Settings and Quit.")
+        statusMenu = makeStatusMenu()
+        let mainMenu = NSMenu()
+        let appItem = NSMenuItem(title: "go/outside", action: nil, keyEquivalent: "")
+        appItem.submenu = makeStatusMenu()
+        mainMenu.addItem(appItem)
+        NSApp.mainMenu = mainMenu
+    }
+
+    private func makeStatusMenu() -> NSMenu {
+        OutsideStatusMenu.make(target: self, settings: #selector(openSettings), quit: #selector(quit))
     }
 
     private func configurePopover() {
         popover.behavior = .transient
-        popover.contentSize = NSSize(width: 360, height: 280)
-        glassView = NSVisualEffectView(frame: NSRect(origin: .zero, size: NSSize(width: 360, height: 280)))
+        popover.contentSize = NSSize(width: 360, height: 360)
+        popoverView = NSView(frame: NSRect(origin: .zero, size: popover.contentSize))
+        glassView = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 360, height: 240))
         glassView.material = .popover
         glassView.blendingMode = .behindWindow
         glassView.state = .active
-        outsideView = OutsideView(frame: glassView.bounds)
+        outsideView = OutsideView(frame: popoverView.bounds)
         outsideView.autoresizingMask = [.width, .height]
-        outsideView.onSettings = { [weak self] in self?.show(.settings) }
         outsideView.onBack = { [weak self] in self?.goBack() }
         outsideView.onCurrentLocation = { [weak self] in self?.locationStore.refresh(userInitiated: true) }
         outsideView.onChooseCity = { [weak self] in self?.show(.city) }
-        outsideView.onQuit = { NSApp.terminate(nil) }
         outsideView.onCitySearch = { [weak self] query in self?.locationStore.searchCity(query) }
         outsideView.onCityConfirm = { [weak self] index in
             guard let self, self.locationStore.candidates.indices.contains(index) else { return }
             self.locationStore.chooseCity(self.locationStore.candidates[index])
         }
         outsideView.onLoginChanged = { [weak self] enabled in self?.setLoginLaunch(enabled) }
-        glassView.addSubview(outsideView)
+        popoverView.addSubview(glassView)
+        popoverView.addSubview(outsideView)
         popover.contentViewController = NSViewController()
-        popover.contentViewController?.view = glassView
+        popover.contentViewController?.view = popoverView
     }
 
     private func configureLocationUpdates() {
@@ -158,11 +172,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func togglePopover() {
+        if OutsideStatusMenu.shouldOpen(for: NSApp.currentEvent),
+           let event = NSApp.currentEvent, let button = statusItem.button {
+            popover.performClose(nil)
+            NSMenu.popUpContextMenu(statusMenu, with: event, for: button)
+            return
+        }
         if popover.isShown {
             popover.performClose(nil)
         } else {
             showPopover()
         }
+    }
+
+    @objc private func openSettings() {
+        screen = .settings
+        if popover.isShown {
+            refreshInterface(forceSolar: true, forceRender: true)
+        } else {
+            showPopover()
+        }
+    }
+
+    @objc private func quit() {
+        NSApp.terminate(nil)
     }
 
     private func showPopover() {
@@ -307,6 +340,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 loginEnabled: LoginLaunch.isEnabled
             )
             popover.contentSize = outsideView.preferredSize
+            popoverView.setFrameSize(outsideView.preferredSize)
+            outsideView.frame = popoverView.bounds
+            glassView.frame = outsideView.contentBounds
+            glassView.isHidden = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
         }
         updateStatus(with: model, minute: minute, forceIcon: forceSolar || crossedSolarBoundary)
     }
