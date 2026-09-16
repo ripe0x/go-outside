@@ -98,7 +98,7 @@ func runAtmosphereTests() {
     let variation = DaylightAtmosphere.configuration(at: nextDay.addingTimeInterval(12 * 3_600), solar: nil, calendar: calendar)
     atmosphereCheck(midday.dailySeed != variation.dailySeed, "Each calendar date needs a stable distinct seed")
     for configuration in [midday, variation] {
-        atmosphereCheck(configuration.centerX >= 0.39 && configuration.centerX <= 0.61, "The daylight arc must stay bounded")
+        atmosphereCheck(configuration.centerX >= 0.2 && configuration.centerX <= 0.8, "The daylight arc must stay bounded")
         atmosphereCheck(configuration.centerY >= 0 && configuration.centerY <= 1, "Field center must stay in the artwork region")
         atmosphereCheck(configuration.radius > 0 && configuration.radius <= 1, "Field radius must remain bounded")
         atmosphereCheck(configuration.stretchX > 0 && configuration.stretchY > 0 && abs(configuration.angle) < 0.3, "Daily shape variation must remain subtle and valid")
@@ -112,9 +112,22 @@ func runAtmosphereTests() {
     let nightPixels = atmospherePixels(night)
     let duskPixels = atmospherePixels(dusk)
     atmosphereCheck(noonPixels.mean > nightPixels.mean, "Rendered noon artwork must be brighter than rendered night artwork")
-    atmosphereCheck(abs(noonPixels.centroidX - duskPixels.centroidX) > 0.07, "The main glow must move along the daylight arc")
-    atmosphereCheck(abs(noonPixels.centroidX - 0.5) < 0.015, "Noon glow must be horizontally centered")
+    atmosphereCheck(abs(noonPixels.peakX - duskPixels.peakX) > 0.2, "The main glow must move along the daylight arc")
+    atmosphereCheck(abs(noonPixels.peakX - 0.5) < 0.05, "Noon glow must be horizontally centered")
     atmosphereCheck(noonPixels.chroma > 0.12 && duskPixels.chroma > 0.12, "The two-color glow must retain visible color contrast")
+
+    var previousBrightArea: CGFloat = -1
+    for step in 0...4 {
+        let elapsed = total * Double(step) / 4
+        let state = DaylightAtmosphere.configuration(
+            at: sunrise.addingTimeInterval(elapsed),
+            solar: solar(total: total, remaining: total - elapsed, state: .daylight, sunrise: nil, sunset: sunset),
+            calendar: calendar
+        )
+        let peak = atmospherePixels(state).peakX
+        atmosphereCheck(peak > previousBrightArea + 0.08, "Rendered brightness must travel left to right throughout daylight")
+        previousBrightArea = peak
+    }
 
     let polarDay = DaylightAtmosphere.configuration(
         at: dayStart.addingTimeInterval(12 * 3_600),
@@ -135,7 +148,7 @@ func runAtmosphereTests() {
             "Atmosphere geometry and brightness must remain finite"
         )
     }
-    print("PASS: deterministic colored atmosphere phase, radial glow, daylight arc, transitions and polar fallbacks")
+    print("PASS: deterministic colored atmosphere phase, airy distorted field, daylight movement, transitions and polar fallbacks")
 }
 
 private func solar(
@@ -158,7 +171,7 @@ private func atmosphereCheck(_ condition: @autoclosure () -> Bool, _ message: @a
     precondition(condition(), message())
 }
 
-private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean: CGFloat, centroidX: CGFloat, centroidY: CGFloat, chroma: CGFloat) {
+private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean: CGFloat, peakX: CGFloat, chroma: CGFloat) {
     let size = NSSize(width: 180, height: 96)
     let image = NSImage(size: size)
     image.lockFocus()
@@ -168,8 +181,8 @@ private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean
         preconditionFailure("Atmosphere artwork must render to a bitmap")
     }
     var luminanceTotal: CGFloat = 0
-    var weightedY: CGFloat = 0
-    var weightedX: CGFloat = 0
+    var brightest: CGFloat = -1
+    var peakX: CGFloat = 0
     var chromaTotal: CGFloat = 0
     var luminousCount = 0
     let count = bitmap.pixelsWide * bitmap.pixelsHigh
@@ -181,8 +194,10 @@ private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean
             let blue = color?.blueComponent ?? 0
             let luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
             luminanceTotal += luminance
-            weightedY += luminance * CGFloat(y)
-            weightedX += luminance * CGFloat(x)
+            if luminance > brightest {
+                brightest = luminance
+                peakX = CGFloat(x) / CGFloat(bitmap.pixelsWide - 1)
+            }
             // Measure the colored light separately from intentional black space.
             if luminance > 0.06 {
                 chromaTotal += max(red, green, blue) - min(red, green, blue)
@@ -190,5 +205,5 @@ private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean
             }
         }
     }
-    return (luminanceTotal / CGFloat(count), weightedX / max(luminanceTotal, 0.0001) / CGFloat(bitmap.pixelsWide - 1), weightedY / max(luminanceTotal, 0.0001), chromaTotal / CGFloat(max(1, luminousCount)))
+    return (luminanceTotal / CGFloat(count), peakX, chromaTotal / CGFloat(max(1, luminousCount)))
 }

@@ -20,8 +20,8 @@ struct AtmosphereConfiguration: Equatable {
 
 /// Native procedural color studies for the dedicated top artwork region.
 ///
-/// The renderer uses one centered diffuse halo, two neighboring colors, and
-/// restrained deterministic grain. It never downloads or copies visual assets. Images
+/// The renderer uses an airy distorted color field and a broad moving light
+/// area, with two related hues and restrained deterministic grain. It never downloads or copies visual assets. Images
 /// are cached by artwork state, so an open popover redraw does not re-run the
 /// pixel field until its minute-level appearance changes.
 enum DaylightAtmosphere {
@@ -87,7 +87,7 @@ enum DaylightAtmosphere {
 
         if solar?.state == .polarDay {
             return AtmosphereConfiguration(
-                phase: phase, dailySeed: seed, centerX: 0.5,
+                phase: phase, dailySeed: seed, centerX: 0.2 + 0.6 * wallPhase,
                 centerY: 0.5, radius: 0.82, stretchX: 1.28, stretchY: 1.10,
                 angle: angleVariation, intensity: 0.86
             )
@@ -105,7 +105,7 @@ enum DaylightAtmosphere {
         return AtmosphereConfiguration(
             phase: phase,
             dailySeed: seed,
-            centerX: 0.5 + 0.11 * sin((phase - 0.5) * .pi * 2),
+            centerX: 0.2 + 0.6 * dayProgress,
             centerY: 0.5 - 0.06 * sin((phase - 0.25) * .pi * 2),
             radius: 0.40 + 0.38 * daylight + 0.14 * horizon,
             stretchX: 0.82 + 0.46 * daylight + 0.68 * horizon,
@@ -150,30 +150,35 @@ enum DaylightAtmosphere {
         )!
         let palette = palette(for: configuration.intensity < 0.35 ? 0 : configuration.phase)
         let seed = unit(configuration.dailySeed)
-        let radius = CGFloat(height) * (0.27 + 0.17 * configuration.radius)
-        let stretch = 1.18 + 0.10 * seed + 0.07 * configuration.radius
-        let cosine = cos(configuration.angle * 0.3)
-        let sine = sin(configuration.angle * 0.3)
-        let background = RGB(red: 0.015, green: 0.014, blue: 0.018)
+        let daylight = clamped((configuration.intensity - 0.37) / 0.22)
+        let pearl = RGB(red: 0.97, green: 0.98, blue: 1.0)
+        let air = RGB.mix(palette.outer, pearl, 0.66)
+        let brightTint = RGB.mix(palette.inner, pearl, 0.90)
+        let horizontalRadius = 0.17 + 0.045 * configuration.radius
+        let verticalRadius = 0.48 + 0.10 * configuration.radius
 
         for y in 0..<height {
+            let vertical = CGFloat(y) / CGFloat(max(1, height - 1))
             for x in 0..<width {
-                let dx = CGFloat(x) - CGFloat(width - 1) * configuration.centerX
-                let dy = CGFloat(y) - CGFloat(height - 1) * configuration.centerY
-                let nx = (dx * cosine - dy * sine) / (radius * stretch)
-                let ny = (dx * sine + dy * cosine) / radius
-                let distance = sqrt(nx * nx + ny * ny)
-                // One diffuse halo, with a softly shaded core. Two neighboring
-                // colors keep the glow calm as it follows a gentle daylight arc.
-                let halo = gaussian(distance - 0.62, width: 0.43)
-                let core = gaussian(distance, width: 0.66) * 0.62
-                let light = (halo * 0.82 + core) * configuration.intensity
-                let reflectedLight = gaussian(nx * 0.55, width: 1.0) * gaussian(ny - 0.5, width: 0.7)
-                let tint = RGB.mix(palette.inner, palette.outer,
-                                   clamped(distance / 1.2 + reflectedLight * 0.12))
-                var color = RGB.mix(background, tint, clamped(light))
-                let grain = (deterministicGrain(x: x, y: y, seed: configuration.dailySeed) - 0.5) * 0.012
-                color = color.adjustedBrightness(grain * clamped(light))
+                let horizontal = CGFloat(x) / CGFloat(max(1, width - 1))
+                let dx = (horizontal - configuration.centerX) / horizontalRadius
+                let dy = (vertical - configuration.centerY) / verticalRadius
+                // Bend a broad light field without creating a visible ring,
+                // stripe, or hard outline. The distortion follows the light.
+                let nx = dx + 0.14 * sin(dy * 2.4)
+                let ny = dy + 0.18 * sin(dx * 1.8)
+                let light = exp(-(nx * nx + ny * ny) * 1.25)
+                let lens = exp(-(dx * dx * 0.38 + dy * dy * 0.65))
+                let warpedY = vertical + 0.16 * sin(horizontal * 4.8 + seed * 1.2)
+                    + 0.13 * lens * sin(dx * 2.0 + dy)
+                let field = clamped(0.28 + 0.52 * warpedY)
+                var color = RGB.mix(palette.inner, palette.outer, field)
+                color = RGB.mix(color, air, clamped(0.24 + 0.24 * warpedY))
+                color = RGB.mix(color, brightTint, light * 0.94)
+                let night = RGB(red: color.red * 0.16, green: color.green * 0.16, blue: color.blue * 0.24)
+                color = RGB.mix(night, color, daylight)
+                let grain = (deterministicGrain(x: x, y: y, seed: configuration.dailySeed) - 0.5) * 0.009
+                color = color.adjustedBrightness(grain)
                 write(color, to: bitmap, x: x, y: y)
             }
         }
