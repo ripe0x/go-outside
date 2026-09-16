@@ -24,7 +24,9 @@ enum OutsideFormat {
 
     static func clock(_ seconds: Double, remaining: Bool = false) -> String {
         guard let total = clockSeconds(seconds, remaining: remaining) else { return "—" }
-        return String(format: "%d:%02d:%02d", total / 3600, total / 60 % 60, total % 60)
+        let units = [(total / 3600, "h"), (total / 60 % 60, "m"), (total % 60, "s")]
+        let parts = units.filter { $0.0 > 0 }.map { "\($0.0)\($0.1)" }
+        return parts.isEmpty ? "0s" : parts.joined(separator: " ")
     }
 
     static func accessibleDuration(_ seconds: Double, remaining: Bool = false) -> String {
@@ -32,9 +34,9 @@ enum OutsideFormat {
         let hours = total / 3600, minutes = total / 60 % 60, seconds = total % 60
         var parts: [String] = []
         if hours > 0 { parts.append("\(hours) " + (hours == 1 ? "hour" : "hours")) }
-        if minutes > 0 || hours > 0 { parts.append("\(minutes) " + (minutes == 1 ? "minute" : "minutes")) }
-        parts.append("\(seconds) " + (seconds == 1 ? "second" : "seconds"))
-        return parts.joined(separator: " ")
+        if minutes > 0 { parts.append("\(minutes) " + (minutes == 1 ? "minute" : "minutes")) }
+        if seconds > 0 { parts.append("\(seconds) " + (seconds == 1 ? "second" : "seconds")) }
+        return parts.isEmpty ? "0 seconds" : parts.joined(separator: " ")
     }
 
     private static func clockSeconds(_ seconds: Double, remaining: Bool) -> Int? {
