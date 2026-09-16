@@ -6,6 +6,8 @@ The app uses Apple's Core Location and geocoding services for the one-shot curre
 
 Computer time counts only while go/outside is running. It stops after 60 seconds without input, during sleep or display-off, and while the session is inactive. It does not import historical Screen Time. The circle compares the two durations: solid is computer time divided by computer time plus daylight remaining; hollow is daylight remaining. The numbers beside it show the exact hours and minutes.
 
+The popover uses native frosted glass with a soft radial gradient that follows the day's light and varies subtly by date. Both light and dark appearances are supported, with an opaque fallback for Reduce Transparency. The gradient is drawn locally and needs no images or extra service.
+
 Automatic location uses a one-shot refresh on launch and after wake on a new calendar day or when the last fix is at least six hours old. A failed refresh keeps the saved coordinates and shows a last-known-location state. A manually chosen city stays selected until changed.
 
 ## Requirements

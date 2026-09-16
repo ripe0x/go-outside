@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var tracker: ActivityTracker!
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
+    private var glassView: NSVisualEffectView!
     private var outsideView: OutsideView!
     private var timer: Timer?
     private var screen: OutsideScreen = .main
@@ -80,7 +81,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func configurePopover() {
         popover.behavior = .transient
         popover.contentSize = NSSize(width: 360, height: 280)
-        outsideView = OutsideView(frame: NSRect(origin: .zero, size: NSSize(width: 360, height: 280)))
+        glassView = NSVisualEffectView(frame: NSRect(origin: .zero, size: NSSize(width: 360, height: 280)))
+        glassView.material = .popover
+        glassView.blendingMode = .behindWindow
+        glassView.state = .active
+        outsideView = OutsideView(frame: glassView.bounds)
+        outsideView.autoresizingMask = [.width, .height]
         outsideView.onSettings = { [weak self] in self?.show(.settings) }
         outsideView.onBack = { [weak self] in self?.goBack() }
         outsideView.onCurrentLocation = { [weak self] in self?.locationStore.refresh(userInitiated: true) }
@@ -92,8 +98,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.locationStore.chooseCity(self.locationStore.candidates[index])
         }
         outsideView.onLoginChanged = { [weak self] enabled in self?.setLoginLaunch(enabled) }
+        glassView.addSubview(outsideView)
         popover.contentViewController = NSViewController()
-        popover.contentViewController?.view = outsideView
+        popover.contentViewController?.view = glassView
     }
 
     private func configureLocationUpdates() {
@@ -287,9 +294,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             solar: cachedSolar,
             locationName: locationStore.saved?.name ?? "Location needed",
             isLastKnown: locationStore.isLastKnown,
-            isAway: tracker.isAway
+            isAway: tracker.isAway,
+            now: now
         )
-        if forceRender || popover.isShown || screen != .main {
+        if forceRender || popover.isShown {
             outsideView.render(
                 model: model,
                 screen: screen,

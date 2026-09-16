@@ -1,29 +1,36 @@
 import AppKit
 import Foundation
 
-private final class GridButton: NSButton {
+private final class GlassButton: NSButton {
     override func draw(_ dirtyRect: NSRect) {
-        let fill = isHighlighted
-            ? NSColor.selectedControlColor.withAlphaComponent(0.20)
-            : NSColor.windowBackgroundColor
+        let alpha: CGFloat = isEnabled ? 1 : 0.44
+        let fill = isHighlighted && isEnabled
+            ? NSColor.selectedControlColor.withAlphaComponent(0.34)
+            : NSColor.windowBackgroundColor.withAlphaComponent(0.30 * alpha)
         fill.setFill()
-        bounds.fill()
-        NSColor.separatorColor.setStroke()
-        let border = NSBezierPath(rect: bounds.insetBy(dx: 0.5, dy: 0.5))
-        border.lineWidth = 1
-        border.stroke()
+        let pill = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: bounds.height / 2, yRadius: bounds.height / 2)
+        pill.fill()
+        NSColor.white.withAlphaComponent(0.34 * alpha).setStroke()
+        pill.lineWidth = 0.8
+        pill.stroke()
 
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .center
         paragraph.lineBreakMode = .byTruncatingTail
         (title as NSString).draw(
-            in: bounds.insetBy(dx: 8, dy: 9),
+            in: bounds.insetBy(dx: 12, dy: 7),
             withAttributes: [
-                .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .medium),
-                .foregroundColor: NSColor.labelColor,
+                .font: NSFont.systemFont(ofSize: 12, weight: .medium),
+                .foregroundColor: NSColor.labelColor.withAlphaComponent(alpha),
                 .paragraphStyle: paragraph
             ]
         )
+        if window?.isKeyWindow == true && window?.firstResponder === self {
+            NSColor.keyboardFocusIndicatorColor.withAlphaComponent(0.85).setStroke()
+            let focus = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: bounds.height / 2, yRadius: bounds.height / 2)
+            focus.lineWidth = 1.5
+            focus.stroke()
+        }
     }
 }
 
@@ -45,6 +52,7 @@ final class OutsideView: NSView {
     var onCitySearch: ((String) -> Void)?
     var onCityConfirm: ((Int) -> Void)?
     var onLoginChanged: ((Bool) -> Void)?
+    var previewReducedTransparency: Bool?
 
     private(set) var preferredSize = NSSize(width: 360, height: 304)
     private var screen: OutsideScreen = .main
@@ -64,8 +72,9 @@ final class OutsideView: NSView {
     private var confirmButton: NSButton?
     private var selectedCandidate = -1
 
-    private let mono = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-    private let monoMedium = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
+    private let mono = NSFont.systemFont(ofSize: 12, weight: .regular)
+    private let monoMedium = NSFont.systemFont(ofSize: 12, weight: .medium)
+    private let hero = NSFont.monospacedDigitSystemFont(ofSize: 36, weight: .medium)
     private let accent = NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             ? NSColor(calibratedRed: 0.96, green: 0.76, blue: 0.30, alpha: 1)
@@ -79,6 +88,8 @@ final class OutsideView: NSView {
         setAccessibilityRole(.group)
         setAccessibilityLabel("go/outside")
     }
+
+    override var isOpaque: Bool { false }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
@@ -135,13 +146,17 @@ final class OutsideView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        NSColor.windowBackgroundColor.setFill()
-        bounds.fill()
-        let line = NSColor.separatorColor
-        line.setStroke()
-        let border = NSBezierPath(rect: bounds.insetBy(dx: 0.5, dy: 0.5))
-        border.lineWidth = 1
-        border.stroke()
+        let reducedTransparency = previewReducedTransparency ?? NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
+        let dark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let atmosphere = DaylightAtmosphere.configuration(at: model.now, solar: model.solar, calendar: .current)
+        DaylightAtmosphere.draw(atmosphere, in: bounds, dark: dark, reducedTransparency: reducedTransparency)
+        let surface = NSBezierPath(roundedRect: bounds.insetBy(dx: 7, dy: 7), xRadius: 22, yRadius: 22)
+        (dark ? NSColor(calibratedWhite: 0.08, alpha: reducedTransparency ? 0.96 : 0.28)
+              : NSColor(calibratedWhite: 1, alpha: reducedTransparency ? 0.96 : 0.16)).setFill()
+        surface.fill()
+        NSColor.white.withAlphaComponent(dark ? 0.18 : 0.54).setStroke()
+        surface.lineWidth = 0.8
+        surface.stroke()
         drawHeader()
         switch screen {
         case .main: drawMain()
@@ -152,11 +167,11 @@ final class OutsideView: NSView {
     }
 
     private func drawHeader() {
-        drawText("go/outside", at: NSPoint(x: 16, y: bounds.height - 29), font: monoMedium)
+        drawText("go/outside", at: NSPoint(x: 20, y: bounds.height - 30), font: NSFont.systemFont(ofSize: 15, weight: .semibold))
         let status = model.isAway ? "AWAY" : (screen == .main ? "TODAY" : "")
-        drawText(status, at: NSPoint(x: bounds.width - 16, y: bounds.height - 29), font: monoMedium,
+        drawText(status, at: NSPoint(x: bounds.width - 20, y: bounds.height - 29), font: monoMedium,
                  alignment: .right, color: model.isAway ? accent : .secondaryLabelColor)
-        NSColor.separatorColor.setStroke()
+        NSColor.white.withAlphaComponent(0.22).setStroke()
         let line = NSBezierPath()
         line.move(to: NSPoint(x: 0, y: bounds.height - 44))
         line.line(to: NSPoint(x: bounds.width, y: bounds.height - 44))
@@ -166,20 +181,19 @@ final class OutsideView: NSView {
 
     private func drawMain() {
         let top = bounds.height - 64
-        drawText("ON YOUR COMPUTER", at: NSPoint(x: 16, y: top), font: monoMedium)
-        drawText("DAYLIGHT LEFT", at: NSPoint(x: bounds.width - 16, y: top), font: monoMedium,
+        drawText("On your computer", at: NSPoint(x: 20, y: top), font: monoMedium, color: .secondaryLabelColor)
+        drawText("Daylight left", at: NSPoint(x: bounds.width - 20, y: top), font: monoMedium,
                  alignment: .right, color: accent)
-        drawText(model.computerText, at: NSPoint(x: 16, y: top - 52), font: NSFont.monospacedSystemFont(ofSize: 36, weight: .regular))
-        drawText(model.daylightText, at: NSPoint(x: bounds.width - 16, y: top - 52), font: NSFont.monospacedSystemFont(ofSize: 36, weight: .regular),
+        drawText(model.computerText, at: NSPoint(x: 20, y: top - 52), font: hero)
+        drawText(model.daylightText, at: NSPoint(x: bounds.width - 20, y: top - 52), font: hero,
                  alignment: .right, color: accent)
-        drawText("/", at: NSPoint(x: bounds.midX, y: top - 44), font: NSFont.monospacedSystemFont(ofSize: 24, weight: .regular),
+        drawText("/", at: NSPoint(x: bounds.midX, y: top - 44), font: NSFont.systemFont(ofSize: 24, weight: .light),
                  alignment: .center, color: .secondaryLabelColor)
-        drawText(model.context, in: NSRect(x: 16, y: top - 96, width: bounds.width - 32, height: 36), font: mono,
+        drawText(model.context, in: NSRect(x: 20, y: top - 96, width: bounds.width - 40, height: 36), font: mono,
                  color: .secondaryLabelColor)
-        drawText(model.message, in: NSRect(x: 16, y: top - 132, width: bounds.width - 32, height: 36), font: monoMedium)
-        drawText("Solid: computer · Hollow: daylight left", at: NSPoint(x: 16, y: 65), font: mono,
+        drawText(model.message, in: NSRect(x: 20, y: top - 132, width: bounds.width - 40, height: 36), font: monoMedium)
+        drawText("Solid: computer · Hollow: daylight left", at: NSPoint(x: 20, y: 58), font: mono,
                  color: .secondaryLabelColor)
-        drawFooter()
     }
 
     private func drawSetup() {
@@ -192,7 +206,6 @@ final class OutsideView: NSView {
         drawText("A city is saved only as a coarse coordinate. No account or history.",
                  in: NSRect(x: 16, y: 82, width: bounds.width - 32, height: 32), font: mono,
                  color: .secondaryLabelColor)
-        drawFooter()
     }
 
     private func drawSettings() {
@@ -206,7 +219,6 @@ final class OutsideView: NSView {
                      : locationMessage,
                  in: NSRect(x: 16, y: bounds.height - 190, width: bounds.width - 32, height: 36), font: mono,
                  color: .secondaryLabelColor)
-        drawFooter(back: true)
     }
 
     private func drawCity() {
@@ -217,16 +229,6 @@ final class OutsideView: NSView {
         if candidates.isEmpty && !isRequesting {
             drawText("Results will appear here.", at: NSPoint(x: 16, y: 126), font: mono, color: .secondaryLabelColor)
         }
-        drawFooter(back: true)
-    }
-
-    private func drawFooter(back: Bool = false) {
-        NSColor.separatorColor.setStroke()
-        let line = NSBezierPath()
-        line.move(to: NSPoint(x: 0, y: 48))
-        line.line(to: NSPoint(x: bounds.width, y: 48))
-        line.lineWidth = 1
-        line.stroke()
     }
 
     private func rebuildControls() {
@@ -243,21 +245,21 @@ final class OutsideView: NSView {
 
         switch screen {
         case .main:
-            addButton("Settings", frame: NSRect(x: 0, y: 0, width: bounds.width / 2, height: 48), action: #selector(settingsPressed), label: "Open settings")
-            addButton("Quit", frame: NSRect(x: bounds.width / 2, y: 0, width: bounds.width / 2, height: 48), action: #selector(quitPressed), label: "Quit go/outside")
+            addButton("Settings", frame: NSRect(x: 20, y: 12, width: 150, height: 30), action: #selector(settingsPressed), label: "Open settings")
+            addButton("Quit", frame: NSRect(x: 190, y: 12, width: 150, height: 30), action: #selector(quitPressed), label: "Quit go/outside")
         case .setup:
             currentLocationButton = addButton("Use current location", frame: NSRect(x: 16, y: bounds.height - 230, width: bounds.width - 32, height: 34), action: #selector(currentLocationPressed), label: "Use current location")
             addButton("Choose a city", frame: NSRect(x: 16, y: bounds.height - 276, width: bounds.width - 32, height: 34), action: #selector(chooseCityPressed), label: "Choose a city")
             loginCheckbox = addCheckbox()
-            addButton("Settings", frame: NSRect(x: 0, y: 0, width: bounds.width / 2, height: 48), action: #selector(settingsPressed), label: "Open settings")
-            addButton("Quit", frame: NSRect(x: bounds.width / 2, y: 0, width: bounds.width / 2, height: 48), action: #selector(quitPressed), label: "Quit go/outside")
+            addButton("Settings", frame: NSRect(x: 20, y: 12, width: 150, height: 30), action: #selector(settingsPressed), label: "Open settings")
+            addButton("Quit", frame: NSRect(x: 190, y: 12, width: 150, height: 30), action: #selector(quitPressed), label: "Quit go/outside")
         case .settings:
-            addButton("Back", frame: NSRect(x: 0, y: 0, width: bounds.width / 2, height: 48), action: #selector(backPressed), label: "Back")
+            addButton("Back", frame: NSRect(x: 20, y: 12, width: 96, height: 30), action: #selector(backPressed), label: "Back")
             currentLocationButton = addButton("Refresh location", frame: NSRect(x: 16, y: bounds.height - 240, width: bounds.width - 32, height: 32), action: #selector(currentLocationPressed), label: "Refresh current location")
             addButton("Choose a city", frame: NSRect(x: 16, y: bounds.height - 282, width: bounds.width - 32, height: 32), action: #selector(chooseCityPressed), label: "Choose a city")
             loginCheckbox = addCheckbox()
         case .city:
-            addButton("Back", frame: NSRect(x: 0, y: 0, width: bounds.width / 2, height: 48), action: #selector(backPressed), label: "Back")
+            addButton("Back", frame: NSRect(x: 20, y: 12, width: 96, height: 30), action: #selector(backPressed), label: "Back")
             let field = NSTextField(frame: NSRect(x: 16, y: bounds.height - 157, width: bounds.width - 112, height: 32))
             field.placeholderString = "City, country"
             field.stringValue = previousSearchText
@@ -299,7 +301,7 @@ final class OutsideView: NSView {
 
     @discardableResult
     private func addButton(_ title: String, frame: NSRect, action: Selector, label: String, tag: Int = 0) -> NSButton {
-        let button = GridButton(title: title, target: self, action: action)
+        let button = GlassButton(title: title, target: self, action: action)
         button.frame = frame
         button.tag = tag
         button.font = monoMedium

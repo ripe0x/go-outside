@@ -45,6 +45,7 @@ struct OutsideModel {
     var locationName: String
     var isLastKnown: Bool
     var isAway: Bool
+    var now: Date = Date()
 
     var computerText: String { OutsideFormat.duration(computer) }
     var daylightText: String { solar.map { OutsideFormat.duration($0.remainingSeconds, remaining: true) } ?? "—" }
