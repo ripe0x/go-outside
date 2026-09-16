@@ -112,8 +112,8 @@ func runAtmosphereTests() {
     let nightPixels = atmospherePixels(night)
     let duskPixels = atmospherePixels(dusk)
     atmosphereCheck(noonPixels.mean > nightPixels.mean, "Rendered noon artwork must be brighter than rendered night artwork")
-    atmosphereCheck(abs(noonPixels.centroidY - duskPixels.centroidY) > 8, "Rendered horizon and noon fields must occupy visibly different shapes")
-    atmosphereCheck(noonPixels.chroma > 0.12 && duskPixels.chroma > 0.12, "Rendered artwork must retain visible cyan and warm color contrast")
+    atmosphereCheck(abs(noonPixels.centroidY - duskPixels.centroidY) > 8, "Rendered dusk and noon volumes must occupy visibly different shapes")
+    atmosphereCheck(noonPixels.chroma > 0.12 && duskPixels.chroma > 0.12, "Luminous volumes must retain visible cyan and warm color contrast")
 
     let polarDay = DaylightAtmosphere.configuration(
         at: dayStart.addingTimeInterval(12 * 3_600),
@@ -134,7 +134,7 @@ func runAtmosphereTests() {
             "Atmosphere geometry and brightness must remain finite"
         )
     }
-    print("PASS: deterministic colored atmosphere phase, folded shapes, transitions and polar fallbacks")
+    print("PASS: deterministic colored atmosphere phase, light volumes, transitions and polar fallbacks")
 }
 
 private func solar(
@@ -169,6 +169,7 @@ private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean
     var luminanceTotal: CGFloat = 0
     var weightedY: CGFloat = 0
     var chromaTotal: CGFloat = 0
+    var luminousCount = 0
     let count = bitmap.pixelsWide * bitmap.pixelsHigh
     for y in 0..<bitmap.pixelsHigh {
         for x in 0..<bitmap.pixelsWide {
@@ -179,8 +180,12 @@ private func atmospherePixels(_ configuration: AtmosphereConfiguration) -> (mean
             let luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
             luminanceTotal += luminance
             weightedY += luminance * CGFloat(y)
-            chromaTotal += max(red, green, blue) - min(red, green, blue)
+            // Measure the colored light separately from intentional black space.
+            if luminance > 0.06 {
+                chromaTotal += max(red, green, blue) - min(red, green, blue)
+                luminousCount += 1
+            }
         }
     }
-    return (luminanceTotal / CGFloat(count), weightedY / max(luminanceTotal, 0.0001), chromaTotal / CGFloat(count))
+    return (luminanceTotal / CGFloat(count), weightedY / max(luminanceTotal, 0.0001), chromaTotal / CGFloat(max(1, luminousCount)))
 }

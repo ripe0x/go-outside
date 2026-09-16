@@ -39,7 +39,7 @@ Keep v1 to one comparison, one location setup, and a small settings sheet.
 
 Keep Ratio's sparse comparison and compact popover. Use black, white, and neutral greys for UI elements only, following system light/dark appearance. Keep color in the artwork above them. Use clear system labels, tabular duration numerals, consistent 24-point margins, and equal comparison columns.
 
-The top third of each popover contains only original colorful abstract light artwork, with no title, labels, buttons, or glass card over it. Use flowing color bands, asymmetric organic blends, luminous folds, and restrained fine texture. Create original artwork locally. Brightness, palette, and shape evolve through dawn, noon, sunset, and night using the calculated solar phase; avoid a single radial ellipse. Add a subtle deterministic daily variation in the shape. Without location, use a cosmetic wall-clock progression while daylight stays unknown.
+The top third of each popover contains only original colorful abstract light artwork, with no title, labels, buttons, or glass card over it. Use softly blurred rounded light volumes, overlapping cyan/violet/pink/amber blooms, generous near-black negative space, and restrained fine grain. Create original artwork locally. Brightness, palette, and shape evolve through dawn, noon, sunset, and night using the calculated solar phase; avoid a single radial ellipse. Add a subtle deterministic daily variation in the shape. Without location, use a cosmetic wall-clock progression while daylight stays unknown.
 
 Place all information and essential setup controls in the lower two-thirds. Native AppKit visual-effect material supplies a very subtle blur behind this region only; a near-opaque neutral tint keeps text contrast stable against the desktop. Use opaque grayscale text with strong contrast in both appearances. Reduce Transparency makes the information region opaque while preserving the decorative gradient. Update through the existing open-popover refresh, with no continuous animation loop or redraw of closed UI.
 
@@ -169,7 +169,7 @@ native/
     LocationStore.swift    # Primary one-shot location, city fallback
     TodayStore.swift       # Today's total and preferences
     OutsideView.swift      # Glass comparison, setup, settings
-    DaylightAtmosphere.swift # Local evolving radial background
+    DaylightAtmosphere.swift # Local evolving blurred light volumes
   Tests/
     AccountingTests.swift
     SolarTests.swift

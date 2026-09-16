@@ -20,7 +20,7 @@ struct AtmosphereConfiguration: Equatable {
 
 /// Native procedural color studies for the dedicated top artwork region.
 ///
-/// The renderer combines warped horizontal bands, asymmetric folds, and fine
+/// The renderer combines softly bounded light volumes, overlapping color blooms, and fine
 /// deterministic grain. It never downloads or copies visual assets. Images
 /// are cached by artwork state, so an open popover redraw does not re-run the
 /// pixel field until its minute-level appearance changes.
@@ -53,15 +53,13 @@ enum DaylightAtmosphere {
         let cool: RGB
         let warm: RGB
         let accent: RGB
-        let edge: RGB
 
         static func mix(_ first: Palette, _ second: Palette, _ amount: CGFloat) -> Palette {
             Palette(
                 base: .mix(first.base, second.base, amount),
                 cool: .mix(first.cool, second.cool, amount),
                 warm: .mix(first.warm, second.warm, amount),
-                accent: .mix(first.accent, second.accent, amount),
-                edge: .mix(first.edge, second.edge, amount)
+                accent: .mix(first.accent, second.accent, amount)
             )
         }
     }
@@ -109,13 +107,13 @@ enum DaylightAtmosphere {
             )
         }
 
-        // Sunrise and sunset become narrow, low, tilted flows. Noon becomes a
-        // broad, high cyan field; night contracts into a deep violet study.
+        // Sunrise and sunset contract the light volume. Noon broadens it;
+        // night dims the palette and leaves more dark negative space.
         return AtmosphereConfiguration(
             phase: phase,
             dailySeed: seed,
             centerX: clamped(0.5 + xVariation + 0.055 * sin((phase - 0.5) * .pi)),
-            centerY: clamped(0.64 * (1 - daylight) + 0.57 * daylight - 0.40 * horizon),
+            centerY: 0.50 + 0.06 * sin(phase * .pi * 2),
             radius: 0.40 + 0.38 * daylight + 0.14 * horizon,
             stretchX: 0.82 + 0.46 * daylight + 0.68 * horizon,
             stretchY: 0.78 + 0.34 * daylight - 0.26 * horizon,
@@ -136,8 +134,8 @@ enum DaylightAtmosphere {
         guard bounds.width > 0, bounds.height > 0 else { return }
         _ = dark
         _ = reducedTransparency
-        let width = max(1, Int(bounds.width.rounded()))
-        let height = max(1, Int(bounds.height.rounded()))
+        let width = max(1, Int((bounds.width * 2).rounded()))
+        let height = max(1, Int((bounds.height * 2).rounded()))
         let key = cacheKey(for: configuration, width: width, height: height)
         let image = imageCache.object(forKey: key) ?? makeImage(configuration, width: width, height: height)
         imageCache.setObject(image, forKey: key)
@@ -161,36 +159,51 @@ enum DaylightAtmosphere {
         let phase = configuration.phase
         let seedA = unit(configuration.dailySeed)
         let seedB = unit(configuration.dailySeed &* 0xD1B5_4A32_D192_ED03)
-        let centerX = configuration.centerX
+        let centerX = configuration.centerX - 0.14
         let centerY = configuration.centerY
-        let slope = tan(configuration.angle) * 0.20
+        let halfWidth = 0.34 + 0.055 * configuration.radius + (seedA - 0.5) * 0.015
+        let halfHeight = 0.37 + 0.13 * configuration.radius
+        let tilt = configuration.angle * 0.35
 
         for y in 0..<height {
             let vertical = CGFloat(y) / CGFloat(max(1, height - 1))
             for x in 0..<width {
                 let horizontal = CGFloat(x) / CGFloat(max(1, width - 1))
-                let broadWarp = 0.16 * sin((horizontal * 0.78 + seedA) * .pi * 2 + phase * .pi)
-                let fineWarp = 0.025 * sin((horizontal * 2.1 - vertical * 0.7 + seedB) * .pi * 2)
-                let flow = vertical + broadWarp + fineWarp + (horizontal - centerX) * slope
-                let primaryCenter = centerY + 0.10 * sin((horizontal * 0.65 + seedB) * .pi * 2)
-                let warmCenter = centerY - 0.18 + 0.14 * sin((horizontal * 0.85 + phase) * .pi * 2)
-                let coolBand = gaussian(flow - primaryCenter, width: 0.27 * configuration.stretchY)
-                let warmBand = gaussian(flow - warmCenter, width: 0.17 * configuration.stretchY)
-                let violetBand = gaussian(flow - (primaryCenter + 0.23), width: 0.22 * configuration.stretchY)
-                let foldCenter = primaryCenter + 0.18 * sin((horizontal * 0.85 + phase * 1.6) * .pi)
-                let fold = gaussian(flow - foldCenter, width: 0.026 + 0.018 * configuration.radius)
-                let sideDistance = abs(horizontal - centerX) / max(configuration.stretchX, 0.1)
-                let sideVignette = clamped(pow(sideDistance, 1.7) * 0.42 + pow(abs(vertical - 0.5), 3) * 0.18)
-                let organicMask = clamped(0.30 + 0.70 * gaussian(horizontal - centerX, width: configuration.radius * 0.85))
+                let nx = (horizontal - centerX) / halfWidth
+                let ny = (vertical - centerY - (horizontal - centerX) * tilt) / halfHeight
+                // A softly blurred superellipse gives the light a rounded
+                // volume and visible silhouette, rather than a radial hotspot.
+                let bentX = nx + 0.065 * sin(ny * 2 + seedB * .pi)
+                let distance = pow(pow(abs(bentX), 6) + pow(abs(ny), 6), 1.0 / 6.0)
+                let body = 1 / (1 + exp((distance - 0.94) / 0.085))
+                let rim = gaussian(distance - 0.87, width: 0.16)
+                let halo = gaussian(distance - 1.0, width: 0.28) * 0.16
+                let leftBloom = gaussian(nx + 0.70, width: 0.60)
+                let warmBloom = gaussian(nx - 0.65, width: 0.65) * gaussian(ny - 0.30, width: 1.15)
+                let cyanBloom = gaussian(nx + 0.20, width: 0.75) * gaussian(ny - 0.55, width: 0.90)
+                let topShadow = gaussian(nx - 0.05, width: 0.95) * gaussian(ny + 0.70, width: 0.55)
 
-                var color = RGB.mix(palette.base, palette.cool, coolBand * (0.34 + 0.54 * organicMask))
-                color = RGB.mix(color, palette.warm, warmBand * (0.18 + 0.58 * horizonStrength(phase)))
-                color = RGB.mix(color, palette.accent, violetBand * 0.36)
-                color = RGB.mix(color, RGB(red: 1, green: 0.96, blue: 0.90), fold * (0.14 + 0.43 * configuration.intensity))
-                color = RGB.mix(color, palette.edge, sideVignette)
-
-                let grain = deterministicGrain(x: x, y: y, seed: configuration.dailySeed) * 0.014 - 0.007
-                color = color.adjustedBrightness(grain)
+                var color = RGB.mix(palette.base, palette.cool, 0.86)
+                color = RGB.mix(color, palette.accent, leftBloom * 0.92)
+                color = RGB.mix(color, palette.warm, warmBloom * 0.98)
+                color = RGB.mix(color, palette.cool, cyanBloom * 0.72)
+                color = RGB.mix(color, RGB(red: 0.88, green: 0.86, blue: 0.96),
+                                cyanBloom * warmBloom * 0.45 * configuration.intensity)
+                color = RGB.mix(color, palette.base, topShadow * (0.52 + 0.16 * sin(phase * .pi)))
+                let rimColor = RGB.mix(palette.cool, palette.accent, clamped((ny + 0.6) / 1.4))
+                color = RGB.mix(color, rimColor, rim * 0.36)
+                let luminance = 0.2126 * color.red + 0.7152 * color.green + 0.0722 * color.blue
+                color = RGB(red: clamped(luminance + (color.red - luminance) * 1.35),
+                            green: clamped(luminance + (color.green - luminance) * 1.35),
+                            blue: clamped(luminance + (color.blue - luminance) * 1.35))
+                let luminosity = (body + halo) * (0.48 + 0.70 * configuration.intensity)
+                color = RGB(red: color.red * luminosity,
+                            green: color.green * luminosity,
+                            blue: color.blue * luminosity)
+                let background = RGB(red: 0.015, green: 0.014, blue: 0.018)
+                color = RGB.mix(background, color, clamped(body + halo))
+                let grain = (deterministicGrain(x: x, y: y, seed: configuration.dailySeed) - 0.5) * 0.028
+                color = color.adjustedBrightness(grain * (0.25 + 0.75 * body))
                 write(color, to: bitmap, x: x, y: y)
             }
         }
@@ -206,29 +219,25 @@ enum DaylightAtmosphere {
             base: RGB(red: 0.075, green: 0.035, blue: 0.16),
             cool: RGB(red: 0.20, green: 0.14, blue: 0.43),
             warm: RGB(red: 0.35, green: 0.07, blue: 0.28),
-            accent: RGB(red: 0.28, green: 0.10, blue: 0.48),
-            edge: RGB(red: 0.055, green: 0.012, blue: 0.10)
+            accent: RGB(red: 0.28, green: 0.10, blue: 0.48)
         )
         let dawn = Palette(
             base: RGB(red: 0.22, green: 0.06, blue: 0.23),
             cool: RGB(red: 0.14, green: 0.62, blue: 0.76),
             warm: RGB(red: 1.0, green: 0.55, blue: 0.36),
-            accent: RGB(red: 0.98, green: 0.20, blue: 0.48),
-            edge: RGB(red: 0.17, green: 0.025, blue: 0.12)
+            accent: RGB(red: 0.98, green: 0.20, blue: 0.48)
         )
         let noon = Palette(
-            base: RGB(red: 0.10, green: 0.28, blue: 0.52),
-            cool: RGB(red: 0.18, green: 0.85, blue: 0.96),
-            warm: RGB(red: 0.98, green: 0.66, blue: 0.73),
-            accent: RGB(red: 0.68, green: 0.36, blue: 0.88),
-            edge: RGB(red: 0.11, green: 0.05, blue: 0.28)
+            base: RGB(red: 0.055, green: 0.10, blue: 0.36),
+            cool: RGB(red: 0.04, green: 0.77, blue: 1.0),
+            warm: RGB(red: 1.0, green: 0.69, blue: 0.18),
+            accent: RGB(red: 0.97, green: 0.28, blue: 0.74)
         )
         let dusk = Palette(
             base: RGB(red: 0.24, green: 0.045, blue: 0.20),
             cool: RGB(red: 0.24, green: 0.42, blue: 0.78),
             warm: RGB(red: 1.0, green: 0.54, blue: 0.34),
-            accent: RGB(red: 0.90, green: 0.14, blue: 0.46),
-            edge: RGB(red: 0.15, green: 0.012, blue: 0.10)
+            accent: RGB(red: 0.90, green: 0.14, blue: 0.46)
         )
         let wrapped = phase == 1 ? 0 : phase
         if wrapped < 0.25 { return .mix(night, dawn, wrapped / 0.25) }
@@ -260,10 +269,6 @@ enum DaylightAtmosphere {
         data[index + 1] = UInt8((clamped(color.green) * 255).rounded())
         data[index + 2] = UInt8((clamped(color.blue) * 255).rounded())
         data[index + 3] = 255
-    }
-
-    private static func horizonStrength(_ phase: CGFloat) -> CGFloat {
-        max(bell(phase, centeredAt: 0.25, width: 0.15), bell(phase, centeredAt: 0.75, width: 0.16))
     }
 
     private static func deterministicGrain(x: Int, y: Int, seed: UInt64) -> CGFloat {
