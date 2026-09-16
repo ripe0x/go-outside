@@ -38,6 +38,6 @@ Launch at login is off by default. When enabled, macOS registers the bundled hel
 
 ## Source and license
 
-This project is a local GPL-3.0 derivative of [visualizevalue/ratio](https://github.com/visualizevalue/ratio/tree/682abc1d65f406029faee91c18187ab3fbcd91de), reviewed at commit [`682abc1d65f406029faee91c18187ab3fbcd91de`](https://github.com/visualizevalue/ratio/commit/682abc1d65f406029faee91c18187ab3fbcd91de) on September 16, 2026. The upstream application source and this derivative are licensed under [GNU GPL v3](LICENSE), and the corresponding source and build script are included here.
+This project is a [GitHub fork](https://github.com/ripe0x/go-outside) and GPL-3.0 derivative of [visualizevalue/ratio](https://github.com/visualizevalue/ratio/tree/682abc1d65f406029faee91c18187ab3fbcd91de), reviewed at commit [`682abc1d65f406029faee91c18187ab3fbcd91de`](https://github.com/visualizevalue/ratio/commit/682abc1d65f406029faee91c18187ab3fbcd91de) on September 16, 2026. The upstream application source and this derivative are licensed under [GNU GPL v3](LICENSE), and the corresponding source and build script are included here.
 
 go/outside uses new fork-owned lowercase branding and a new ratio-circle icon. The Ratio name, Ratio icon, Visualize Value name, and other upstream brand assets are not used or granted by this license. This project does not connect to upstream commercial services.

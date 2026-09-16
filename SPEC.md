@@ -4,7 +4,7 @@ A tiny macOS menu-bar app that compares active computer time today with daylight
 
 **The question:** “How much of today have I spent here, and how much daylight can I still catch?”
 
-Status: v1 implemented as a local derivative on the `go-outside` branch, with a universal `native/GoOutside.app` build. Accounting, solar, atmosphere, location-policy, presentation, and native-control self-tests pass; light/dark layouts and the 20-point ratio icon have been visually checked. The app has been launched locally and the current-location comparison works. Public GitHub publication, Developer ID signing, and notarized distribution remain separate work.
+Status: v1 implemented in the [GitHub fork](https://github.com/ripe0x/go-outside) on its default `go-outside` branch, with a universal `native/GoOutside.app` build. Accounting, solar, atmosphere, location-policy, presentation, and native-control self-tests pass; light/dark layouts and the 20-point ratio icon have been visually checked. The app has been launched locally and the current-location comparison works. Developer ID signing and notarized distribution remain separate work.
 
 ## Review of Ratio
 
@@ -219,7 +219,7 @@ The repository explicitly licenses application source under GPL-3.0 and excludes
 2. Replace categorized tracking with a scalar today ledger. Verify activity, overlapping away states, relaunch, midnight, and clock changes.
 3. Add solar calculations and location setup. Verify ordinary, before-sunrise, after-sunset, timezone-offset, and polar cases with fixed dates.
 4. Build the single comparison view, state copy, appearance, keyboard/VoiceOver labels, and optional login launch.
-5. Run the acceptance checks, create a locally signed universal app, and document install/build steps. Public signing, notarization, automatic updates, and GitHub publication are separate distribution work.
+5. Run the acceptance checks, create a locally signed universal app, and document install/build steps. Public signing, notarization, and automatic updates are separate distribution work.
 
 ## Acceptance checks
 
