@@ -23,10 +23,14 @@ func runViewTests() {
         }
         return button
     }
-    func checkGeometry() {
+    func checkGeometry(main: Bool = false) {
         precondition(view.atmosphereBounds.minY == view.contentBounds.maxY)
-        precondition(view.atmosphereBounds.height == view.bounds.height / 3)
-        precondition(view.contentBounds.height == view.bounds.height * 2 / 3)
+        let artworkHeight = main ? CGFloat(120) : view.bounds.height / 3
+        precondition(view.atmosphereBounds.height == artworkHeight)
+        precondition(view.contentBounds.height == view.bounds.height - artworkHeight)
+        for rect in view.contentTextBounds {
+            precondition(view.contentBounds.contains(rect), "Text must stay below the artwork")
+        }
         for control in view.subviews.compactMap({ $0 as? NSControl }) {
             precondition(view.contentBounds.contains(control.frame), "Controls must stay below the atmosphere")
             precondition(!view.contentTextBounds.contains(where: { $0.intersects(control.frame) }), "Text and controls must not overlap")
@@ -34,9 +38,9 @@ func runViewTests() {
     }
 
     render(.main, model: long)
-    precondition(view.frame.size == NSSize(width: 360, height: 360))
+    precondition(view.frame.size == NSSize(width: 360, height: 264))
     precondition(view.subviews.compactMap({ $0 as? NSButton }).isEmpty, "Main must not expose settings or quit buttons")
-    checkGeometry()
+    checkGeometry(main: true)
 
     render(.setup)
     precondition(view.frame.size == NSSize(width: 360, height: 540))
@@ -78,5 +82,5 @@ func runViewTests() {
     button("Back").performClick(nil)
     precondition(backPressed, "City must retain Back")
     checkGeometry()
-    print("PASS: top-third atmosphere, monochrome content layout, controls and city selection")
+    print("PASS: compact comparison panels, artwork separation, monochrome controls and city selection")
 }
