@@ -22,14 +22,26 @@ enum OutsideFormat {
         return minutes >= 60 ? String(format: "%dh%02d", minutes / 60, minutes % 60) : "\(minutes)m"
     }
 
+    static func clock(_ seconds: Double, remaining: Bool = false) -> String {
+        guard let total = clockSeconds(seconds, remaining: remaining) else { return "—" }
+        return String(format: "%d:%02d:%02d", total / 3600, total / 60 % 60, total % 60)
+    }
+
     static func accessibleDuration(_ seconds: Double, remaining: Bool = false) -> String {
-        guard seconds.isFinite else { return "Unknown time" }
+        guard let total = clockSeconds(seconds, remaining: remaining) else { return "Unknown time" }
+        let hours = total / 3600, minutes = total / 60 % 60, seconds = total % 60
+        var parts: [String] = []
+        if hours > 0 { parts.append("\(hours) " + (hours == 1 ? "hour" : "hours")) }
+        if minutes > 0 || hours > 0 { parts.append("\(minutes) " + (minutes == 1 ? "minute" : "minutes")) }
+        parts.append("\(seconds) " + (seconds == 1 ? "second" : "seconds"))
+        return parts.joined(separator: " ")
+    }
+
+    private static func clockSeconds(_ seconds: Double, remaining: Bool) -> Int? {
+        guard seconds.isFinite else { return nil }
         let safeSeconds = min(max(0, seconds), 7 * 86400)
-        let minutes = Int(remaining ? ceil(safeSeconds / 60) : floor(safeSeconds / 60))
-        let hours = minutes / 60
-        let minuteText = "\(minutes % 60) " + (minutes % 60 == 1 ? "minute" : "minutes")
-        return hours > 0 ? "\(hours) " + (hours == 1 ? "hour " : "hours ") + minuteText
-            : "\(minutes) " + (minutes == 1 ? "minute" : "minutes")
+        // A countdown must not display zero before the daylight has ended.
+        return Int(remaining ? ceil(safeSeconds) : floor(safeSeconds))
     }
 
     static func time(_ date: Date) -> String {
@@ -49,6 +61,8 @@ struct OutsideModel {
 
     var computerText: String { OutsideFormat.duration(computer) }
     var daylightText: String { solar.map { OutsideFormat.duration($0.remainingSeconds, remaining: true) } ?? "—" }
+    var computerClock: String { OutsideFormat.clock(computer) }
+    var daylightClock: String { solar.map { OutsideFormat.clock($0.remainingSeconds, remaining: true) } ?? "—" }
     var ratio: RatioState { RatioState.make(computer: computer, daylight: solar?.remainingSeconds) }
     var menuText: String { "\(computerText) / \(daylightText)" }
     var accessibility: String {

@@ -37,7 +37,7 @@ Keep v1 to one comparison, one location setup, and a small settings sheet.
 
 ## Main interface
 
-Keep Ratio's sparse comparison and compact popover. Use black, white, and neutral greys for UI elements only, following system light/dark appearance. Keep color in the artwork above them. Use clear system labels, tabular duration numerals, consistent 24-point margins, and equal comparison columns.
+Keep Ratio's sparse comparison and compact popover. Use black, white, and neutral greys for UI elements only, following system light/dark appearance. Keep color in the artwork above them. Use clear system labels, condensed tabular clock numerals, consistent 24-point margins, and equal left-aligned comparison columns.
 
 The top third of each popover contains only original colorful abstract light artwork, with no title, labels, buttons, or glass card over it. Use an airy, vibrant gradient with two related hues, gentle distortion, a broad bright area, and restrained fine grain. Create original artwork locally. Brightness, palette, and shape evolve through dawn, noon, sunset, and night using the calculated solar phase; keep the composition simple and fully inside the artwork region. Move the main bright area monotonically from left to right between sunrise and sunset, distorting the surrounding color field; avoid rings and isolated objects. Add a subtle deterministic daily variation in the shape. Without location, use a cosmetic wall-clock progression while daylight stays unknown.
 
@@ -71,7 +71,7 @@ The menu-bar tooltip and VoiceOver label identify both durations. Remove the sol
 
 The main comparison is 360 × 360 points: a 120-point gradient section above a 240-point information section. Setup, settings, and the city fallback may be taller to accommodate their essential controls, retaining the same one-third/two-thirds division with no tabs or scrolling.
 
-Below the gradient, show `go/outside` and `TODAY` or `AWAY` on one header baseline. Align the two labels and tabular duration values in equal columns. Place the sunrise/sunset context and state message below them, with consistent margins and vertical spacing. Tune against `23h59 / 23h59` so long values fit. The slash compares durations; it is not a percentage or a productivity score.
+Below the gradient, show `go/outside` and `TODAY` or `AWAY` on one header baseline. Left-align the two condensed clocks in equal columns, with sentence-case labels underneath. Place the sunrise/sunset context and state message below them, with consistent margins and vertical spacing. Tune against `23:59:59 / 23:59:59` so long values fit. The slash compares durations; it is not a percentage or a productivity score.
 
 Remove Settings and Quit buttons from the popover. Right-click or Control-click the menu-bar item for a native menu with Settings and Quit. Left-click continues to toggle the comparison. While the app is active, ⌘, opens Settings and ⌘Q quits. Keep Back on auxiliary screens and retain necessary location, city-search, and login controls.
 
@@ -145,13 +145,13 @@ Recalculate solar intervals on launch, location change, calendar-date/timezone c
 
 ### Formatting
 
-- Store seconds; display hours and minutes, without seconds or decimal hours.
-- Computer time rounds down to completed minutes.
-- Daylight rounds up to the next minute while positive, so it never shows `0m` before daylight actually ends.
-- Examples: `0m`, `8m`, `1h03`, `4h12`.
-- A missing location uses `—`; zero available daylight uses `0m`.
+- Store seconds; show the main count-up and countdown clocks as `H:MM:SS`.
+- Computer time rounds down to completed seconds. Daylight rounds up to the next second while positive, so it never displays zero before daylight actually ends.
+- Examples: `0:00:00`, `0:08:23`, `1:03:07`, `4:12:59`.
+- A missing location uses `—`; zero available daylight uses `0:00:00`.
+- The compact menu title retains minute precision (`8m`, `1h03`), rounding computer time down and positive daylight up.
 - Refresh the menu title only when its displayed minute or state changes. Update the open popover as needed; avoid redrawing closed UI every second.
-- VoiceOver reads a full sentence: `Four hours twelve minutes on your computer today. Two hours eight minutes of daylight remaining.` All controls support keyboard navigation; Escape closes the popover.
+- VoiceOver reads a full sentence: `Four hours twelve minutes five seconds on your computer today. Two hours eight minutes seven seconds of daylight remaining.` All controls support keyboard navigation; Escape closes the popover.
 
 ## Fork implementation
 

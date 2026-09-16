@@ -95,6 +95,7 @@ private enum PreviewRenderer {
         }
         let cases: [(String, OutsideModel, OutsideScreen, String, Bool, [CityCandidate])] = [
             ("main-share", model(4 * 3_600, solarDaylight, "Brooklyn, NY"), .main, "", false, []),
+            ("main-seconds", model(52 * 60 + 37, SolarSnapshot(remainingSeconds: 6 * 3_600 + 18 * 60 + 9, totalDaylightSeconds: 12 * 3_600, state: .daylight, nextSunrise: nil, nextSunset: date(16, 18).addingTimeInterval(18 * 60 + 9)), "Brooklyn, NY"), .main, "", false, []),
             ("main-hollow", model(0, solarDaylight, "Brooklyn, NY"), .main, "", false, []),
             ("main-solid", model(4 * 3_600, solarAfterSunset, "Brooklyn, NY", away: true, now: night), .main, "", false, []),
             ("main-empty", model(0, solarAfterSunset, "Brooklyn, NY", now: night), .main, "", false, []),

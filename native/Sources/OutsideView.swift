@@ -118,7 +118,7 @@ final class OutsideView: NSView {
         let body = contentBounds
         switch screen {
         case .main:
-            return [NSRect(x: 24, y: body.maxY - 40, width: 312, height: 20), NSRect(x: 24, y: body.maxY - 130, width: 312, height: 74), NSRect(x: 24, y: 72, width: 312, height: 36), NSRect(x: 24, y: 36, width: 312, height: 28)]
+            return [NSRect(x: 24, y: body.maxY - 40, width: 312, height: 20), NSRect(x: 24, y: 121, width: 312, height: 70), NSRect(x: 24, y: 78, width: 312, height: 36), NSRect(x: 24, y: 38, width: 312, height: 28)]
         case .setup:
             return [NSRect(x: 24, y: body.maxY - 42, width: 312, height: 22), NSRect(x: 24, y: body.maxY - 90, width: 312, height: 38), NSRect(x: 24, y: body.maxY - 140, width: 312, height: 38), NSRect(x: 24, y: 96, width: 312, height: 30)]
         case .settings:
@@ -147,7 +147,8 @@ final class OutsideView: NSView {
     private let labelFont = NSFont.systemFont(ofSize: 12, weight: .medium)
     private let bodyFont = NSFont.systemFont(ofSize: 13, weight: .regular)
     private let bodyMedium = NSFont.systemFont(ofSize: 13, weight: .semibold)
-    private let heroFont = NSFont.monospacedDigitSystemFont(ofSize: 32, weight: .medium)
+    private let brandFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
+    private let clockLabelFont = NSFont.systemFont(ofSize: 11, weight: .medium)
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -204,17 +205,46 @@ final class OutsideView: NSView {
 
     private func drawMain(dark: Bool) {
         let layout = contentTextBounds; let primary = textColor(dark: dark); let muted = mutedColor(dark: dark)
-        drawText("go/outside", in: NSRect(x: layout[0].minX, y: layout[0].minY, width: 160, height: layout[0].height), font: bodyMedium, color: primary)
+        let computerClock = model.computerClock
+        let daylightClock = model.daylightClock
+        let clockFont = fittedClockFont(computer: computerClock, daylight: daylightClock, maximumWidth: 140)
+        drawText("go/outside", in: NSRect(x: layout[0].minX, y: layout[0].minY, width: 160, height: layout[0].height), font: brandFont, color: primary)
         drawText(model.isAway ? "AWAY" : "TODAY", in: NSRect(x: layout[0].maxX - 108, y: layout[0].minY, width: 108, height: layout[0].height), font: labelFont, alignment: .right, color: muted)
-        let left = NSRect(x: layout[1].minX, y: layout[1].minY, width: 128, height: layout[1].height)
-        let right = NSRect(x: layout[1].maxX - 128, y: layout[1].minY, width: 128, height: layout[1].height)
-        drawText("ON YOUR COMPUTER", in: NSRect(x: left.minX, y: left.maxY - 16, width: left.width, height: 16), font: labelFont, alignment: .center, color: muted)
-        drawText("DAYLIGHT LEFT", in: NSRect(x: right.minX, y: right.maxY - 16, width: right.width, height: 16), font: labelFont, alignment: .center, color: muted)
-        drawText(model.computerText, in: NSRect(x: left.minX, y: left.minY, width: left.width, height: 40), font: heroFont, alignment: .center, color: primary)
-        drawText(model.daylightText, in: NSRect(x: right.minX, y: right.minY, width: right.width, height: 40), font: heroFont, alignment: .center, color: primary)
-        drawText("/", in: NSRect(x: 164, y: left.minY + 4, width: 32, height: 36), font: NSFont.systemFont(ofSize: 24, weight: .light), alignment: .center, color: muted)
+        let left = NSRect(x: layout[1].minX, y: layout[1].minY + 24, width: 140, height: 46)
+        let right = NSRect(x: layout[1].maxX - 140, y: left.minY, width: 140, height: 46)
+        drawText(computerClock, in: left, font: clockFont, color: primary)
+        drawText(daylightClock, in: right, font: clockFont, color: primary)
+        drawText("/", in: NSRect(x: left.maxX, y: left.minY + 8, width: right.minX - left.maxX, height: 32), font: NSFont.systemFont(ofSize: 24, weight: .light), alignment: .center, color: muted)
+        drawText("On your computer", in: NSRect(x: left.minX, y: layout[1].minY, width: left.width, height: 18), font: clockLabelFont, color: muted)
+        drawText("Daylight left", in: NSRect(x: right.minX, y: layout[1].minY, width: right.width, height: 18), font: clockLabelFont, color: muted)
         drawText(model.context, in: layout[2], font: bodyFont, color: muted)
         drawText(model.message, in: layout[3], font: bodyMedium, color: primary)
+    }
+
+    private func fittedClockFont(computer: String, daylight: String, maximumWidth: CGFloat) -> NSFont {
+        for size in stride(from: CGFloat(36), through: CGFloat(24), by: -1) {
+            let font = condensedClockFont(size: size)
+            let attributes: [NSAttributedString.Key: Any] = [.font: font]
+            if (computer as NSString).size(withAttributes: attributes).width <= maximumWidth,
+               (daylight as NSString).size(withAttributes: attributes).width <= maximumWidth {
+                return font
+            }
+        }
+        return condensedClockFont(size: 24)
+    }
+
+    private func condensedClockFont(size: CGFloat) -> NSFont {
+        guard let base = NSFont(name: "AvenirNextCondensed-DemiBold", size: size) else {
+            let fallback = NSFont.monospacedDigitSystemFont(ofSize: size, weight: .semibold)
+            return NSFontManager.shared.convert(fallback, toHaveTrait: .condensedFontMask)
+        }
+        let tabularDescriptor = base.fontDescriptor.addingAttributes([
+            .featureSettings: [[
+                NSFontDescriptor.FeatureKey.typeIdentifier: 6,
+                NSFontDescriptor.FeatureKey.selectorIdentifier: 0
+            ]]
+        ])
+        return NSFont(descriptor: tabularDescriptor, size: size) ?? base
     }
 
     private func drawSetup(dark: Bool) {
